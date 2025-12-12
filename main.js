@@ -285,29 +285,48 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
+  const fileInputRef = useRef(null);
 
   const initialParams = { ...window.PRESETS[0].params, delayRate: getNearestDelayDivision(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
   // Merge with defaults when loading
-  const loadPreset = (index) => {
-    const p = window.PRESETS[index];
+  const applyPatch = (patch) => {
+    const p = patch;
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
     fullParams.delayRate = getNearestDelayDivision(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
 
+    const incomingSteps = Array.isArray(p.steps) ? p.steps : window.DEFAULT_STEPS;
+    const normalizedSteps = incomingSteps.map((s, idx) => ({
+      pitch: typeof s.pitch === 'number' ? s.pitch : (window.DEFAULT_STEPS[idx]?.pitch ?? 0.5),
+      velocity: typeof s.velocity === 'number' ? s.velocity : (window.DEFAULT_STEPS[idx]?.velocity ?? 0.5),
+    }));
+    while (normalizedSteps.length < window.DEFAULT_STEPS.length) {
+      const idx = normalizedSteps.length;
+      normalizedSteps.push({
+        pitch: window.DEFAULT_STEPS[idx].pitch,
+        velocity: window.DEFAULT_STEPS[idx].velocity,
+      });
+    }
+    if (normalizedSteps.length > window.DEFAULT_STEPS.length) {
+      normalizedSteps.length = window.DEFAULT_STEPS.length;
+    }
+
     setParams(fullParams);
-    setSteps([...p.steps]);
-    setCurrentPresetName(p.name);
+    setSteps(normalizedSteps);
+    setCurrentPresetName(p.name || 'CUSTOM');
 
     if (workletNode) {
       Object.keys(fullParams).forEach(key => {
         workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: fullParams[key] } });
       });
-      workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: p.steps } });
+      workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: normalizedSteps } });
     }
   };
+
+  const loadPreset = (index) => applyPatch(window.PRESETS[index]);
 
   const startAudio = async () => {
     if (audioCtx) return;
@@ -343,6 +362,50 @@ const App = () => {
     newSteps[index] = { ...newSteps[index], [field]: value };
     setSteps(newSteps);
     if (workletNode) workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: newSteps } });
+  };
+
+  const savePatch = () => {
+    const payload = {
+      name: currentPresetName,
+      params: { ...params },
+      steps,
+    };
+    const randomId = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    const filename = `jroomz-patch-${randomId}.json`;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (parsed && parsed.params && parsed.steps) {
+          applyPatch(parsed);
+        }
+      } catch (err) {
+        console.error('Invalid patch file', err);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const triggerLoad = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const toggleRun = async () => {
@@ -384,8 +447,25 @@ const App = () => {
       <HelpModal isOpen={showModal} onClose={() => setShowModal(false)} />
 
       <div className={`w-full max-w-4xl shrink-0 ${mainBg} rounded-xl shadow-2xl border-4 ${panelBorder} flex flex-col relative transition-colors duration-300 mb-8 md:mb-0`}>
-        <div className="absolute top-2 right-4 z-20 flex gap-4 items-center">
-          <PresetSelector currentPreset={currentPresetName} onSelect={loadPreset} darkMode={darkMode} />
+        <div className="absolute top-2 right-4 z-20 flex gap-3 items-center">
+          <div className="flex items-center gap-1">
+            <PresetSelector currentPreset={currentPresetName} onSelect={loadPreset} darkMode={darkMode} />
+            <button
+              onClick={savePatch}
+              title="Save patch"
+              className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
+            >
+              💾
+            </button>
+            <button
+              onClick={triggerLoad}
+              title="Load patch"
+              className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
+            >
+              📂
+            </button>
+            <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileInput} />
+          </div>
           <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
           <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
         </div>
