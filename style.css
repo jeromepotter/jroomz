@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Jura:wght@600&family=Poppins:wght@300;400;600;700;900&display=swap');
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.knob-container, .switch-container, button { touch-action: none; }
+.font-poppins { font-family: 'Poppins', sans-serif; }
+.futura-bold { font-family: 'Jura', sans-serif; font-weight: 600; }
+
+.knob-container { position: relative; }
+.knob-indicator { transform-origin: 50% 50%; transition: transform 0.05s linear; }
+
+.led-active { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.8); background-color: #ef4444; }
+.led-inactive { background-color: #450a0a; }
+
+.preset-scroll::-webkit-scrollbar { width: 4px; }
+.preset-scroll::-webkit-scrollbar-track { background: transparent; }
+.preset-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+
+.modal-overlay { backdrop-filter: blur(8px); z-index: 100; }
+
+/* Tooltip for BPM display - FIXED WIDTH */
+.knob-value-tooltip {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  text-align: center;
+  background: rgba(20, 20, 20, 0.9);
+  color: #fff;
+  padding: 4px 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 50;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+}

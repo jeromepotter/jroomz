@@ -1,0 +1,427 @@
+// main.js (loaded via Babel in the browser)
+// Depends on: React/ReactDOM globals, window.PRESETS, window.DEFAULT_PARAMS, window.DEFAULT_STEPS, window.createJroomzWorkletNode
+
+const { useState, useEffect, useRef } = React;
+
+// --- COMPONENTS ---
+
+const HelpModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-4 modal-overlay bg-black/80" onClick={onClose}>
+      <div className="w-full max-w-4xl bg-black text-white border-2 border-white shadow-2xl p-8 relative flex flex-col max-h-[90vh] overflow-y-auto font-poppins" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-bold hover:text-gray-400">&times;</button>
+        <h2 className="text-4xl mb-8 font-bold tracking-tight border-b-2 border-white pb-4 uppercase">Operational Manual</h2>
+        <div className="space-y-12 text-sm leading-relaxed">
+          <section>
+            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">1. Percussion Synthesizer</h3>
+            <p className="mb-4 text-gray-300">The brain of the machine. It steps through 8 voltages.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><span className="font-bold text-white">TEMPO</span><br /><span className="text-gray-400">Sets the speed.</span></div>
+              <div><span className="font-bold text-white">PITCH (Top)</span><br /><span className="text-gray-400">Sets frequency offset per step.</span></div>
+              <div><span className="font-bold text-white">VEL (Bottom)</span><br /><span className="text-gray-400">Sets volume and envelope depth per step.</span></div>
+            </div>
+          </section>
+          <section>
+            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">2. Oscillator Bank</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div><span className="font-bold text-white">VCO FREQ</span><br /><span className="text-gray-400">Pitch offset.</span></div>
+              <div><span className="font-bold text-white">WAVE</span><br /><span className="text-gray-400">▲ (Smooth), Π (Harsh).</span></div>
+              <div><span className="font-bold text-white">SEQ PITCH SWITCH</span><br /><ul className="text-gray-400 mt-1"><li><strong>OFF:</strong> Drone mode.</li><li><strong>1&2:</strong> Both track sequencer.</li><li><strong>2:</strong> Only VCO 2 tracks sequencer.</li></ul></div>
+            </div>
+          </section>
+          <section>
+            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">3. Filter & Envelopes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div><span className="font-bold text-white">CUTOFF</span><br /><span className="text-gray-400">Frequency ceiling (Low Pass).</span></div>
+              <div><span className="font-bold text-white">RES</span><br /><span className="text-gray-400">Whistling peak at cutoff.</span></div>
+              <div><span className="font-bold text-white">VCA MODE</span><br /><span className="text-gray-400"><strong>FAST:</strong> Percussive. <strong>SLOW:</strong> Swelling/Pad.</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size = "md", color = "black", darkMode }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const startY = useRef(0);
+  const startVal = useRef(0);
+
+  const handleStart = (clientY) => {
+    setIsDragging(true);
+    startY.current = clientY;
+    startVal.current = value;
+  };
+
+  const updateValue = (clientY) => {
+    const deltaY = startY.current - clientY;
+    const range = max - min;
+    let newVal = Math.min(max, Math.max(min, startVal.current + (deltaY / 200) * range));
+    onChange(newVal);
+  };
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+      if (isDragging) {
+        if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+        updateValue(clientY);
+      }
+    };
+    const handleEnd = () => setIsDragging(false);
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging]);
+
+  const pct = (value - min) / (max - min);
+  const sizeClasses = size === "lg" ? "w-8 h-8 md:w-14 md:h-14" : size === "sm" ? "w-5 h-5 md:w-8 md:h-8" : "w-6 h-6 md:w-11 md:h-11";
+  const textSize = size === "lg" ? "text-[7px] md:text-[9px]" : "text-[6px] md:text-[8px]";
+  const textColor = darkMode ? "text-gray-300" : "text-gray-800";
+
+  let knobBg, knobBorder, indicatorBg;
+  if (color === "white") {
+    knobBg = darkMode ? "bg-gray-400" : "bg-gray-200";
+    knobBorder = darkMode ? "border-gray-500" : "border-gray-400";
+    indicatorBg = darkMode ? "bg-gray-900" : "bg-gray-800";
+  } else {
+    knobBg = darkMode ? "bg-gray-900" : "bg-gray-800";
+    knobBorder = darkMode ? "border-gray-700" : "border-gray-600";
+    indicatorBg = "bg-white";
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-start h-full p-0.5 relative">
+      {isDragging && max > 10 && <div className="knob-value-tooltip">{Math.round(value)}</div>}
+
+      <div className={`${textSize} font-bold ${textColor} mb-0.5 text-center leading-none px-0.5 tracking-tight uppercase`}>{label}</div>
+      <div
+        className={`knob-container rounded-full border-2 ${sizeClasses} relative shadow-md cursor-ns-resize ${knobBg} ${knobBorder}`}
+        onMouseDown={(e) => handleStart(e.clientY)}
+        onTouchStart={(e) => handleStart(e.touches[0].clientY)}
+        onDoubleClick={() => onChange(bipolar ? (max + min) / 2 : min)}
+      >
+        {color !== "white" && <div className="absolute inset-1 rounded-full border border-gray-600 opacity-50"></div>}
+        <div
+          className={`knob-indicator absolute w-0.5 h-1/2 left-1/2 rounded-full origin-bottom ${indicatorBg}`}
+          style={{ bottom: '50%', left: 'calc(50% - 1px)', transform: `rotate(${-135 + pct * 270}deg)` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
+
+const Switch = ({ label, value, onChange, options, darkMode }) => {
+  const textColor = darkMode ? "text-gray-300" : "text-gray-800";
+  const baseBg = darkMode ? "bg-gray-700" : "bg-gray-300";
+  const switchBg = darkMode ? "bg-gray-900" : "bg-black";
+  return (
+    <div className="flex flex-col items-center h-full p-0.5 switch-container">
+      <div className={`text-[6px] md:text-[8px] font-bold ${textColor} mb-0.5 text-center uppercase`}>{label}</div>
+      <div
+        className={`w-5 h-6 md:w-6 md:h-9 ${baseBg} border-2 border-gray-500 rounded flex flex-col items-center justify-between p-0.5 cursor-pointer shadow-inner`}
+        onClick={() => onChange((value + 1) % options.length)}
+      >
+        <div className={`w-full h-1/2 ${switchBg} rounded-sm shadow-md transition-transform duration-100 ${value === 0 ? 'translate-y-0' : (value === options.length - 1 ? 'translate-y-full' : 'translate-y-1/2')}`}></div>
+      </div>
+      <div className="flex flex-col text-[5px] md:text-[7px] text-gray-500 mt-0.5 leading-tight text-center">
+        {options.map((o, i) => <span key={i} className={i === value ? `font-bold ${darkMode ? 'text-gray-200' : 'text-black'}` : ''}>{o}</span>)}
+      </div>
+    </div>
+  );
+};
+
+const SequencerStep = ({ index, pitch, velocity, onChange, isActive, darkMode }) => {
+  return (
+    <div className={`flex flex-col items-center flex-1 min-w-0 border-r ${darkMode ? 'border-gray-700' : 'border-gray-300'} last:border-0 relative pb-1`}>
+      <div className="mb-1 mt-1">
+        <div className={`w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full transition-colors duration-75 ${isActive ? 'led-active' : 'led-inactive'}`}></div>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <Knob value={pitch} onChange={(v) => onChange(index, 'pitch', v)} size="sm" label="" darkMode={darkMode} />
+        <Knob value={velocity} onChange={(v) => onChange(index, 'velocity', v)} size="sm" label="" darkMode={darkMode} />
+      </div>
+      <span className="text-[7px] md:text-[9px] font-bold text-gray-500 mt-0.5 absolute bottom-[-10px]">{index + 1}</span>
+    </div>
+  );
+};
+
+const PresetSelector = ({ currentPreset, onSelect, darkMode }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`text-xs font-bold px-2 py-1 rounded border uppercase tracking-wider flex items-center gap-1 transition-colors ${darkMode ? 'text-gray-300 border-gray-600 hover:border-gray-400 bg-gray-800' : 'text-gray-600 border-gray-400 hover:border-gray-600 bg-gray-200'}`}
+      >
+        {currentPreset ? currentPreset : 'PRESETS'} <span className="text-[8px]">▼</span>
+      </button>
+      {isOpen && (
+        <div className={`absolute top-full right-0 mt-1 w-48 max-h-[320px] overflow-y-auto preset-scroll border-2 shadow-xl z-50 rounded-sm ${darkMode ? 'bg-gray-900 border-gray-600 text-gray-300' : 'bg-white border-gray-800 text-gray-800'}`}>
+          {window.PRESETS.map((preset, idx) => (
+            <div
+              key={idx}
+              onClick={() => { onSelect(idx); setIsOpen(false); }}
+              className={`px-3 py-2 text-xs font-bold cursor-pointer hover:bg-red-500 hover:text-white border-b last:border-0 uppercase ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}
+            >
+              {idx + 1}. {preset.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const App = () => {
+  const [audioCtx, setAudioCtx] = useState(null);
+  const [workletNode, setWorkletNode] = useState(null);
+  const [isStarted, setIsStarted] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
+
+  const [params, setParams] = useState(window.PRESETS[0].params);
+  const [steps, setSteps] = useState(window.PRESETS[0].steps);
+
+  // Merge with defaults when loading
+  const loadPreset = (index) => {
+    const p = window.PRESETS[index];
+    const currentRun = params.run;
+    const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
+
+    setParams(fullParams);
+    setSteps([...p.steps]);
+    setCurrentPresetName(p.name);
+
+    if (workletNode) {
+      Object.keys(fullParams).forEach(key => {
+        workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: fullParams[key] } });
+      });
+      workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: p.steps } });
+    }
+  };
+
+  const startAudio = async () => {
+    if (audioCtx) return;
+
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    try {
+      const node = await window.createJroomzWorkletNode(ctx);
+      node.connect(ctx.destination);
+      node.port.onmessage = (e) => { if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step); };
+
+      setAudioCtx(ctx);
+      setWorkletNode(node);
+      setIsStarted(true);
+
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      Object.keys(params).forEach(key => node.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: params[key] } }));
+      node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateParam = (id, value) => {
+    setParams(prev => ({ ...prev, [id]: value }));
+    if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value } });
+  };
+
+  const updateStep = (index, field, value) => {
+    const newSteps = [...steps];
+    newSteps[index] = { ...newSteps[index], [field]: value };
+    setSteps(newSteps);
+    if (workletNode) workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: newSteps } });
+  };
+
+  const toggleRun = async () => {
+    if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    const newVal = params.run ? 0 : 1;
+    updateParam('run', newVal);
+  };
+
+  const doTrigger = async () => {
+    if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    if (workletNode) workletNode.port.postMessage({ type: 'TRIGGER' });
+  };
+
+  const doAdvance = async () => {
+    if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    if (!params.run) {
+      const nextStep = (currentStep + 1) % 8;
+      setCurrentStep(nextStep);
+      if (workletNode) workletNode.port.postMessage({ type: 'SET_STEP', payload: { step: nextStep } });
+    }
+  };
+
+  if (!isStarted) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#121212] text-white p-4">
+        <h1 className="text-5xl md:text-8xl mb-4 font-poppins font-black tracking-tight">JROOMZ</h1>
+        <button onClick={startAudio} className="px-12 py-5 bg-white text-black hover:bg-gray-200 font-bold tracking-widest transition-transform active:scale-95 font-poppins text-lg rounded-sm shadow-xl">INITIALIZE</button>
+      </div>
+    );
+  }
+
+  const mainBg = darkMode ? "bg-[#222]" : "bg-[#e5e5e5]";
+  const panelBorder = darkMode ? "border-gray-700" : "border-gray-800";
+  const seqBg = darkMode ? "bg-[#333]" : "bg-[#d4d4d4]";
+  const seqBorder = darkMode ? "border-gray-600" : "border-gray-400";
+  const sidePanel = darkMode ? "bg-[#111]" : "bg-[#3e2723]";
+
+  return (
+    <div className={`h-screen w-full ${darkMode ? 'bg-[#121212]' : 'bg-[#333]'} flex flex-col items-center justify-start md:justify-center p-2 md:p-4 overflow-y-auto transition-colors duration-300`}>
+      <HelpModal isOpen={showModal} onClose={() => setShowModal(false)} />
+
+      <div className={`w-full max-w-4xl shrink-0 ${mainBg} rounded-xl shadow-2xl border-4 ${panelBorder} flex flex-col relative transition-colors duration-300 mb-8 md:mb-0`}>
+        <div className="absolute top-2 right-4 z-20 flex gap-4 items-center">
+          <PresetSelector currentPreset={currentPresetName} onSelect={loadPreset} darkMode={darkMode} />
+          <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
+          <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
+        </div>
+        <div className={`absolute top-2 left-4 z-20 font-futura-bold text-lg tracking-widest opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
+        <div className={`hidden md:block absolute left-0 top-0 bottom-0 w-6 ${sidePanel} border-r-2 border-black z-10 shadow-2xl`}></div>
+        <div className={`hidden md:block absolute right-0 top-0 bottom-0 w-6 ${sidePanel} border-l-2 border-black z-10 shadow-2xl`}></div>
+
+        <div className="flex flex-col md:px-8 py-10 w-full">
+          <div className={`${seqBg} border-2 ${seqBorder} rounded-lg p-2 shadow-inner mb-4 transition-colors duration-300`}>
+            <div className={`flex items-center justify-between mb-2 px-2 border-b ${darkMode ? 'border-gray-600' : 'border-gray-300'} pb-2`}>
+              <h2 className={`text-xs font-black ${darkMode ? 'text-gray-400' : 'text-gray-700'} tracking-wider`}>PERCUSSION SYNTHESIZER</h2>
+            </div>
+            <div className="flex flex-row w-full gap-2 items-stretch">
+              <div className={`flex flex-col justify-between items-center pr-2 border-r-2 ${darkMode ? 'border-gray-600' : 'border-gray-300'} min-w-[50px]`}>
+                <Knob label="TEMPO" value={params.tempo} onChange={(v) => updateParam('tempo', v)} min={40} max={300} size="lg" darkMode={darkMode} />
+                <div className="flex flex-col gap-1 mt-2 w-full">
+                  <button onClick={toggleRun} className={`h-6 w-full rounded border border-gray-600 text-[8px] font-bold shadow-sm ${params.run ? 'bg-red-600 text-white' : (darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-black')}`}>{params.run ? 'STOP' : 'RUN'}</button>
+                  <div className="flex gap-1 w-full">
+                    <button onMouseDown={doTrigger} className={`flex-1 h-6 rounded border border-gray-600 active:bg-red-600 text-white text-[8px] font-bold ${darkMode ? 'bg-gray-800' : 'bg-gray-800'}`}>TRIG</button>
+                    <button onClick={doAdvance} className={`flex-1 h-6 rounded border border-gray-600 active:bg-gray-400 text-[8px] font-bold ${darkMode ? 'bg-gray-600 text-white' : 'bg-gray-300 text-black'}`}>ADV</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-row justify-between w-full overflow-hidden">
+                <div className={`flex flex-col justify-start items-end pr-1 gap-0.5 flex-shrink-0 ${darkMode ? 'opacity-100 text-white' : 'opacity-50 text-gray-800'}`}>
+                  <div className="mb-1 mt-1 h-1.5 md:h-2.5"></div>
+                  <div className="flex flex-col gap-0.5 items-end h-full">
+                    <span className="text-[6px] md:text-[8px] font-bold h-[28px] md:h-[44px] flex items-center leading-none">PITCH</span>
+                    <span className="text-[6px] md:text-[8px] font-bold h-[28px] md:h-[44px] flex items-center leading-none">VEL</span>
+                  </div>
+                </div>
+
+                <div className={`flex-1 flex flex-row border-l ${darkMode ? 'border-gray-600' : 'border-gray-300'} pl-1 w-full gap-0.5`}>
+                  {steps.map((s, i) => (
+                    <SequencerStep
+                      key={i}
+                      index={i}
+                      pitch={s.pitch}
+                      velocity={s.velocity}
+                      onChange={updateStep}
+                      isActive={currentStep === i}
+                      darkMode={darkMode}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-2 px-0.5">
+            <div className="grid grid-cols-12 gap-0.5 items-end justify-items-center">
+              <div className="col-span-5 flex justify-evenly w-full border-r border-gray-400/30 pr-0.5">
+                <Knob label="VCO1 FREQ" value={params.vco1Freq} onChange={(v) => updateParam('vco1Freq', v)} size="lg" darkMode={darkMode} />
+                <Switch label="WAVE" value={params.vco1Wave} options={['▲', 'Π']} onChange={(v) => updateParam('vco1Wave', v)} darkMode={darkMode} />
+                <Knob label="VCO1 LVL" value={params.vco1Level} onChange={(v) => updateParam('vco1Level', v)} size="sm" darkMode={darkMode} />
+                <Knob label="VCO1 EG" value={params.vco1EgAmt} onChange={(v) => updateParam('vco1EgAmt', v)} bipolar darkMode={darkMode} />
+                <Knob label="DECAY" value={params.vcoDecay} onChange={(v) => updateParam('vcoDecay', v)} darkMode={darkMode} />
+              </div>
+              <div className="col-span-1 flex justify-center">
+                <Switch label="SEQ PITCH" value={params.seqPitchMod} options={['OFF', '1&2', '2']} onChange={(v) => updateParam('seqPitchMod', v)} darkMode={darkMode} />
+              </div>
+              <div className="col-span-6 flex justify-evenly w-full border-l border-gray-400/30 pl-0.5">
+                <Knob label="VCO2 FREQ" value={params.vco2Freq} onChange={(v) => updateParam('vco2Freq', v)} size="lg" darkMode={darkMode} />
+                <Switch label="WAVE" value={params.vco2Wave} options={['▲', 'Π']} onChange={(v) => updateParam('vco2Wave', v)} darkMode={darkMode} />
+                <Knob label="VCO2 LVL" value={params.vco2Level} onChange={(v) => updateParam('vco2Level', v)} size="sm" darkMode={darkMode} />
+                <Knob label="VCO2 EG" value={params.vco2EgAmt} onChange={(v) => updateParam('vco2EgAmt', v)} bipolar darkMode={darkMode} />
+                <Switch label="SYNC" value={params.hardSync} options={['OFF', 'ON']} onChange={(v) => updateParam('hardSync', v)} darkMode={darkMode} />
+                <Knob label="FM AMT" value={params.fmAmount} onChange={(v) => updateParam('fmAmount', v)} darkMode={darkMode} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 gap-0.5 items-end justify-items-center mt-1">
+              <div className="col-span-1">
+                <Knob label="NOISE" value={params.noiseLevel} onChange={(v) => updateParam('noiseLevel', v)} size="sm" color="black" darkMode={darkMode} />
+              </div>
+              <div className="col-span-7 flex justify-evenly w-full bg-black/5 rounded-lg py-1 px-1">
+                <div className="w-10"></div>
+                <Knob label="CUTOFF" value={params.cutoff} onChange={(v) => updateParam('cutoff', v)} size="lg" darkMode={darkMode} />
+                <Knob label="RES" value={params.resonance} onChange={(v) => updateParam('resonance', v)} darkMode={darkMode} />
+                <Knob label="EG AMT" value={params.vcfEgAmt} onChange={(v) => updateParam('vcfEgAmt', v)} bipolar darkMode={darkMode} />
+                <Knob label="DECAY" value={params.vcfDecay} onChange={(v) => updateParam('vcfDecay', v)} darkMode={darkMode} />
+                <Knob label="NOISE MOD" value={params.noiseVcfMod} onChange={(v) => updateParam('noiseVcfMod', v)} darkMode={darkMode} />
+              </div>
+              <div className="col-span-4 flex justify-evenly w-full pl-1">
+                <Switch label="VCA MODE" value={params.vcaEgMode} options={['FAST', 'SLOW']} onChange={(v) => updateParam('vcaEgMode', v)} darkMode={darkMode} />
+                <Knob label="DECAY" value={params.vcaDecay} onChange={(v) => updateParam('vcaDecay', v)} darkMode={darkMode} />
+                <Knob label="VOLUME" value={params.volume} onChange={(v) => updateParam('volume', v)} size="lg" darkMode={darkMode} />
+              </div>
+            </div>
+          </div>
+
+          <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-between gap-2`}>
+            <span className={`text-[8px] font-black tracking-[0.4em] hidden md:block opacity-50 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>SEMI-MODULAR ANALOG PERCUSSION</span>
+            <div className={`w-full md:w-auto flex items-center justify-between md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
+              <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
+                <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">DELAY</div>
+                <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="D RATE" value={params.delayRate} onChange={(v) => updateParam('delayRate', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
+              </div>
+              <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
+                <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">REV</div>
+                <Knob label="R WET" value={params.reverbMix} onChange={(v) => updateParam('reverbMix', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="R LEN" value={params.reverbDecay} onChange={(v) => updateParam('reverbDecay', v)} size="sm" color="white" darkMode={darkMode} />
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">FX</div>
+                <Knob label="HPF" value={params.masterHP} onChange={(v) => updateParam('masterHP', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="LPF" value={params.masterLP} onChange={(v) => updateParam('masterLP', v)} size="sm" color="white" darkMode={darkMode} />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);

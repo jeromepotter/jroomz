@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JROOMZ - Analog Percussion</title>
+
+  <!-- React + Babel (keeps your current workflow: JSX in browser) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind CDN (same as your original) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Load data + engine first (plain JS, no Babel needed) -->
+  <script src="presets.js"></script>
+  <script src="synth-engine.js"></script>
+
+  <!-- App UI (JSX) -->
+  <script type="text/babel" src="main.js"></script>
+</body>
+</html>
