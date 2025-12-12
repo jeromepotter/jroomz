@@ -100,9 +100,14 @@ const HelpModal = ({ isOpen, onClose }) => {
 const delayDivisions = [
   { label: "1/64", value: 1 / 64 },
   { label: "1/32", value: 1 / 32 },
+  { label: "1/32 D", value: 3 / 64 },
   { label: "1/16", value: 1 / 16 },
+  { label: "1/12", value: 1 / 12 },
+  { label: "1/16 D", value: 3 / 32 },
   { label: "1/8", value: 1 / 8 },
+  { label: "1/8 D", value: 3 / 16 },
   { label: "1/4", value: 1 / 4 },
+  { label: "1/4 D", value: 3 / 8 },
   { label: "1/2", value: 1 / 2 },
   { label: "1", value: 1 },
 ];
@@ -485,7 +490,7 @@ const App = () => {
                   size="sm"
                   color="white"
                   darkMode={darkMode}
-                  displayFormatter={(v) => `${delayDivisions.find((d) => d.value === getNearestDelayDivision(v))?.label || '1/4'} NOTE`}
+                  displayFormatter={(v) => `${delayDivisions.find((d) => d.value === getNearestDelayDivision(v))?.label || '1/4'}`}
                 />
                 <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
