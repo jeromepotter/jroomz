@@ -540,24 +540,34 @@ const App = () => {
 
           <div className="flex flex-col space-y-2 px-0.5">
             <div className="grid grid-cols-12 gap-0.5 items-end justify-items-center">
-              <div className="col-span-5 flex justify-evenly w-full border-r border-gray-400/30 pr-0.5">
+              
+              {/* VCO 1 SECTION (Col 1-4) */}
+              <div className="col-span-4 flex justify-evenly w-full border-r border-gray-400/30 pr-0.5">
                 <Knob label="VCO1 FREQ" value={params.vco1Freq} onChange={(v) => updateParam('vco1Freq', v)} size="lg" darkMode={darkMode} />
                 <Switch label="WAVE" value={params.vco1Wave} options={['▲', 'Π']} onChange={(v) => updateParam('vco1Wave', v)} darkMode={darkMode} />
                 <Knob label="VCO1 LVL" value={params.vco1Level} onChange={(v) => updateParam('vco1Level', v)} size="sm" darkMode={darkMode} />
                 <Knob label="VCO1 EG" value={params.vco1EgAmt} onChange={(v) => updateParam('vco1EgAmt', v)} bipolar darkMode={darkMode} />
+              </div>
+
+              {/* MODULATION / SHARED SECTION (Col 5-8) */}
+              <div className="col-span-4 flex justify-evenly w-full border-r border-gray-400/30 px-0.5 bg-white/5 rounded-lg">
+                {/* Global Pitch Decay */}
                 <Knob label="DECAY" value={params.vcoDecay} onChange={(v) => updateParam('vcoDecay', v)} darkMode={darkMode} />
-              </div>
-              <div className="col-span-1 flex justify-center">
+                {/* Routing */}
                 <Switch label="SEQ PITCH" value={params.seqPitchMod} options={['OFF', '1&2', '2']} onChange={(v) => updateParam('seqPitchMod', v)} darkMode={darkMode} />
+                {/* Interactions */}
+                <Switch label="SYNC" value={params.hardSync} options={['OFF', 'ON']} onChange={(v) => updateParam('hardSync', v)} darkMode={darkMode} />
+                <Knob label="FM AMT" value={params.fmAmount} onChange={(v) => updateParam('fmAmount', v)} darkMode={darkMode} />
               </div>
-              <div className="col-span-6 flex justify-evenly w-full border-l border-gray-400/30 pl-0.5">
+
+              {/* VCO 2 SECTION (Col 9-12) */}
+              <div className="col-span-4 flex justify-evenly w-full pl-0.5">
                 <Knob label="VCO2 FREQ" value={params.vco2Freq} onChange={(v) => updateParam('vco2Freq', v)} size="lg" darkMode={darkMode} />
                 <Switch label="WAVE" value={params.vco2Wave} options={['▲', 'Π']} onChange={(v) => updateParam('vco2Wave', v)} darkMode={darkMode} />
                 <Knob label="VCO2 LVL" value={params.vco2Level} onChange={(v) => updateParam('vco2Level', v)} size="sm" darkMode={darkMode} />
                 <Knob label="VCO2 EG" value={params.vco2EgAmt} onChange={(v) => updateParam('vco2EgAmt', v)} bipolar darkMode={darkMode} />
-                <Switch label="SYNC" value={params.hardSync} options={['OFF', 'ON']} onChange={(v) => updateParam('hardSync', v)} darkMode={darkMode} />
-                <Knob label="FM AMT" value={params.fmAmount} onChange={(v) => updateParam('fmAmount', v)} darkMode={darkMode} />
               </div>
+
             </div>
 
             <div className="grid grid-cols-12 gap-0.5 items-end justify-items-center mt-1">
