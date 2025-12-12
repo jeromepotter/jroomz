@@ -89,8 +89,8 @@
           this.delayR = new DelayLine(maxDelaySamples);
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
-          
-          // ADDED: Smoother for velocity to prevent clicks on step changes
+
+          // ADDED: Velocity smoother initialized to 0.5 (default velocity)
           this.velSmoother = new SmoothValue(0.5);
 
           const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
@@ -355,20 +355,22 @@
               if (trigger) {
                   const step = this.sequencer.steps[this.sequencer.currentStep];
                   
-                  // FIXED: Always update velocity target, even if low, to allow silencing steps
-                  this.sequencer.lastTrigVel = step.velocity;
-                  
-                  // Only trigger envelope attack if velocity is significant
+                  // FIXED: Logic handles clicks AND preserves ringing out
+                  // Only update velocity if it's a valid trigger (> 0.05).
+                  // If velocity is 0 (Rest), we DO NOT update lastTrigVel, 
+                  // allowing the previous note to decay naturally.
                   if (step.velocity > 0.05) {
+                      this.sequencer.lastTrigVel = step.velocity;
                       this.triggerEnvelopes();
                   }
               }
 
               this.processEnvelopes();
 
-              // FIXED: Use smoothed velocity to prevent clicks when jumping between values
+              // FIXED: Smooth the velocity transition to prevent clicks 
+              // when jumping between different non-zero velocities.
               this.velSmoother.set(this.sequencer.lastTrigVel);
-              const vel = this.velSmoother.process(0.1);
+              const vel = this.velSmoother.process(0.005);
 
               const vco1Base = 20 * Math.pow(1000, this.params.vco1Freq);
               const vco2Base = 20 * Math.pow(1000, this.params.vco2Freq);
