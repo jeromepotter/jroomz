@@ -1,6 +1,5 @@
 // synth-engine.js
 // Exposes: window.JROOMZ_WORKLET_CODE, window.createJroomzWorkletNode(ctx)
-// Notes: keeps worklet source identical to your original inline string.
 
 (() => {
   const workletCode = `
@@ -90,6 +89,9 @@
           this.delayR = new DelayLine(maxDelaySamples);
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
+          
+          // ADDED: Smoother for velocity to prevent clicks on step changes
+          this.velSmoother = new SmoothValue(0.5);
 
           const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
           const stereospread = 23;
@@ -352,15 +354,21 @@
 
               if (trigger) {
                   const step = this.sequencer.steps[this.sequencer.currentStep];
+                  
+                  // FIXED: Always update velocity target, even if low, to allow silencing steps
+                  this.sequencer.lastTrigVel = step.velocity;
+                  
+                  // Only trigger envelope attack if velocity is significant
                   if (step.velocity > 0.05) {
-                      this.sequencer.lastTrigVel = step.velocity;
                       this.triggerEnvelopes();
                   }
               }
 
               this.processEnvelopes();
 
-              const vel = this.sequencer.lastTrigVel;
+              // FIXED: Use smoothed velocity to prevent clicks when jumping between values
+              this.velSmoother.set(this.sequencer.lastTrigVel);
+              const vel = this.velSmoother.process(0.1);
 
               const vco1Base = 20 * Math.pow(1000, this.params.vco1Freq);
               const vco2Base = 20 * Math.pow(1000, this.params.vco2Freq);
