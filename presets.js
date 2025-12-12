@@ -11,7 +11,7 @@
     tempo: 128, run: 0,
     reverbDecay: 0.7, reverbMix: 0.0,
     delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
-    masterHP: 0.0, masterLP: 1.0
+    masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
   };
 
   const DEFAULT_STEPS = [

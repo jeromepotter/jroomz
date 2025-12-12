@@ -79,8 +79,10 @@
 
           this.mfL_hp_sub = new SimpleOnePole();
           this.mfR_hp_sub = new SimpleOnePole();
-          this.mfL_lp = new SimpleOnePole();
-          this.mfR_lp = new SimpleOnePole();
+          this.masterLPFilter = {
+              l: { x1: 0, x2: 0, y1: 0, y2: 0 },
+              r: { x1: 0, x2: 0, y1: 0, y2: 0 }
+          };
 
           this.delayL = new DelayLine(96000);
           this.delayR = new DelayLine(96000);
@@ -112,7 +114,7 @@
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
               delayRate: 0.3, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
-              masterHP: 0.0, masterLP: 1.0
+              masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
           };
 
           this.port.onmessage = (e) => {
@@ -200,7 +202,9 @@
           let fc = 2.0 * 3.14159 * cutoffFreq / this.fs;
           fc = Math.min(Math.max(fc, 0), 0.98);
           const r = res * 3.8;
-          const x = input - r * Math.tanh(this.filter.s4);
+          const normalizedCut = cutoffFreq / (this.fs * 0.48);
+          const drive = 0.6 + (1 - Math.min(1, normalizedCut)) * 0.4;
+          const x = (input * drive) - r * Math.tanh(this.filter.s4);
           const f = fc;
 
           this.filter.s1 += f * (Math.tanh(x) - Math.tanh(this.filter.s1));
@@ -213,6 +217,44 @@
               return 0;
           }
           return this.filter.s4;
+      }
+
+      computeMasterLPCoeffs(cutoffFreq, resonance) {
+          const fc = Math.max(20, Math.min(this.fs * 0.45, cutoffFreq));
+          const omega = 2 * Math.PI * fc / this.fs;
+          const sin = Math.sin(omega);
+          const cos = Math.cos(omega);
+          const q = 0.5 + (resonance * 5.5);
+          const alpha = sin / (2 * q);
+
+          const b0 = (1 - cos) / 2;
+          const b1 = 1 - cos;
+          const b2 = (1 - cos) / 2;
+          const a0 = 1 + alpha;
+          const a1 = -2 * cos;
+          const a2 = 1 - alpha;
+
+          return {
+              b0: b0 / a0,
+              b1: b1 / a0,
+              b2: b2 / a0,
+              a1: a1 / a0,
+              a2: a2 / a0
+          };
+      }
+
+      processMasterLowpass(inL, inR, coeffs) {
+          const st = this.masterLPFilter;
+
+          const yL = coeffs.b0 * inL + coeffs.b1 * st.l.x1 + coeffs.b2 * st.l.x2 - coeffs.a1 * st.l.y1 - coeffs.a2 * st.l.y2;
+          st.l.x2 = st.l.x1; st.l.x1 = inL;
+          st.l.y2 = st.l.y1; st.l.y1 = Number.isFinite(yL) ? yL : 0;
+
+          const yR = coeffs.b0 * inR + coeffs.b1 * st.r.x1 + coeffs.b2 * st.r.x2 - coeffs.a1 * st.r.y1 - coeffs.a2 * st.r.y2;
+          st.r.x2 = st.r.x1; st.r.x1 = inR;
+          st.r.y2 = st.r.y1; st.r.y1 = Number.isFinite(yR) ? yR : 0;
+
+          return [st.l.y1, st.r.y1];
       }
 
       processDelay(inL, inR) {
@@ -285,6 +327,10 @@
 
           const stepsPerSec = (this.params.tempo * 4) / 60.0;
           const clockDt = stepsPerSec / this.fs;
+
+          const hpFreq = 20 * Math.pow(20000/20, this.params.masterHP);
+          const lpFreq = 20 * Math.pow(20000/20, this.params.masterLP);
+          const masterLPCoeffs = this.computeMasterLPCoeffs(lpFreq, this.params.masterRes);
 
           let stepChanged = false;
           let newStepIndex = -1;
@@ -368,16 +414,12 @@
               let mixL = delL + (revL * rWet * 1.5);
               let mixR = delR + (revR * rWet * 1.5);
 
-              let hpFreq = 20 * Math.pow(20000/20, this.params.masterHP);
-              let lpFreq = 20 * Math.pow(20000/20, this.params.masterLP);
-
               let subL = this.mfL_hp_sub.process(mixL, hpFreq, this.fs);
               let subR = this.mfR_hp_sub.process(mixR, hpFreq, this.fs);
               let hpL = mixL - subL;
               let hpR = mixR - subR;
 
-              let finalL = this.mfL_lp.process(hpL, lpFreq, this.fs);
-              let finalR = this.mfR_lp.process(hpR, lpFreq, this.fs);
+              const [finalL, finalR] = this.processMasterLowpass(hpL, hpR, masterLPCoeffs);
 
               const boost = 1.1;
               channelL[i] = Math.tanh(finalL * boost);
