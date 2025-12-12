@@ -423,7 +423,7 @@ const App = () => {
     updateParam('run', newVal);
   };
 
-  // --- NEW: SPACEBAR LISTENER ---
+  // --- SPACEBAR LISTENER ---
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Check for spacebar and ensure it's not a repeat event (holding down)
@@ -479,14 +479,14 @@ const App = () => {
               title="Save patch"
               className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
             >
-              💾
+              S
             </button>
             <button
               onClick={triggerLoad}
               title="Load patch"
               className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
             >
-              📂
+              L
             </button>
             <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileInput} />
           </div>
