@@ -75,8 +75,8 @@ const HelpModal = ({ isOpen, onClose }) => {
           <section>
             <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">4. Amplifier & Dynamics</h3>
             <ul className="list-disc list-inside text-gray-300 space-y-1">
-              <li><strong>VCA MODE</strong>: <em>FAST</em> uses a sharp attack for percussive clicks. <em>SLOW</em> softens the start for longer, swelling bodies.</li>
-              <li><strong>VCA DECAY</strong>: Tail length of the volume envelope.</li>
+              <li><strong>ATTACK</strong>: Controls the onset speed. Low values are punchy; higher values soften the start.</li>
+              <li><strong>DECAY</strong>: Tail length of the volume envelope.</li>
               <li><strong>VOLUME</strong>: Final gain before effects.</li>
             </ul>
           </section>
@@ -297,6 +297,15 @@ const App = () => {
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
     fullParams.delayRate = getNearestDelayDivision(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
+
+    // MIGRATION: If incoming patch lacks vcaAttack but has old mode, convert it.
+    if (fullParams.vcaAttack === undefined) {
+      if (p.params && p.params.vcaEgMode === 1) {
+         fullParams.vcaAttack = 0.02; // Slow
+      } else {
+         fullParams.vcaAttack = 0.003; // Fast
+      }
+    }
 
     const incomingSteps = Array.isArray(p.steps) ? p.steps : window.DEFAULT_STEPS;
     const normalizedSteps = incomingSteps.map((s, idx) => ({
@@ -549,7 +558,8 @@ const App = () => {
                 <Knob label="NOISE MOD" value={params.noiseVcfMod} onChange={(v) => updateParam('noiseVcfMod', v)} darkMode={darkMode} />
               </div>
               <div className="col-span-4 flex justify-evenly w-full pl-1">
-                <Switch label="VCA MODE" value={params.vcaEgMode} options={['FAST', 'SLOW']} onChange={(v) => updateParam('vcaEgMode', v)} darkMode={darkMode} />
+                {/* CHANGED: Swapped Switch for Knob (Attack) */}
+                <Knob label="ATTACK" value={params.vcaAttack} onChange={(v) => updateParam('vcaAttack', v)} min={0.001} max={0.4} darkMode={darkMode} />
                 <Knob label="DECAY" value={params.vcaDecay} onChange={(v) => updateParam('vcaDecay', v)} darkMode={darkMode} />
                 <Knob label="VOLUME" value={params.volume} onChange={(v) => updateParam('volume', v)} size="lg" darkMode={darkMode} />
               </div>
