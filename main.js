@@ -97,6 +97,57 @@ const HelpModal = ({ isOpen, onClose }) => {
   );
 };
 
+const delayDivisions = [
+  { label: "1/64", value: 1 / 64 },
+  { label: "1/32", value: 1 / 32 },
+  { label: "1/16", value: 1 / 16 },
+  { label: "1/8", value: 1 / 8 },
+  { label: "1/4", value: 1 / 4 },
+  { label: "1/2", value: 1 / 2 },
+  { label: "1", value: 1 },
+];
+
+const getNearestDelayDivision = (val) => {
+  let closest = delayDivisions[0].value;
+  let minDiff = Math.abs(val - closest);
+  delayDivisions.forEach(d => {
+    const diff = Math.abs(val - d.value);
+    if (diff < minDiff) { minDiff = diff; closest = d.value; }
+  });
+  return closest;
+};
+
+const DelayRateModal = ({ isOpen, onClose, value, onSelect }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-4 modal-overlay bg-black/80" onClick={onClose}>
+      <div
+        className="w-[320px] max-w-sm bg-black text-white border-2 border-white shadow-2xl p-6 relative flex flex-col font-poppins"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-2xl font-bold hover:text-gray-400">&times;</button>
+        <h3 className="text-2xl mb-4 font-bold tracking-tight border-b border-white pb-2 uppercase">Delay Rate</h3>
+        <p className="text-xs text-gray-300 mb-4 leading-relaxed">
+          Delay time follows the project BPM. Pick a note division from 1/64 up to a full bar and the echo will lock to that length.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {delayDivisions.map((d) => (
+            <button
+              key={d.label}
+              onClick={() => { onSelect(d.value); onClose(); }}
+              className={`py-2 px-3 rounded border-2 text-sm font-bold transition-colors duration-150 ${value === d.value
+                ? 'bg-white text-black border-white'
+                : 'bg-gray-900 text-white border-gray-600 hover:border-white'}`}
+            >
+              {d.label} NOTE
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size = "md", color = "black", darkMode }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
@@ -254,10 +305,12 @@ const App = () => {
   const [isStarted, setIsStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [showDelayModal, setShowDelayModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
 
-  const [params, setParams] = useState(window.PRESETS[0].params);
+  const initialParams = { ...window.PRESETS[0].params, delayRate: getNearestDelayDivision(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
+  const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
   // Merge with defaults when loading
@@ -265,6 +318,7 @@ const App = () => {
     const p = window.PRESETS[index];
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
+    fullParams.delayRate = getNearestDelayDivision(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
 
     setParams(fullParams);
     setSteps([...p.steps]);
@@ -302,8 +356,9 @@ const App = () => {
   };
 
   const updateParam = (id, value) => {
-    setParams(prev => ({ ...prev, [id]: value }));
-    if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value } });
+    const newValue = id === 'delayRate' ? getNearestDelayDivision(value) : value;
+    setParams(prev => ({ ...prev, [id]: newValue }));
+    if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value: newValue } });
   };
 
   const updateStep = (index, field, value) => {
@@ -346,10 +401,17 @@ const App = () => {
   const panelBorder = darkMode ? "border-gray-700" : "border-gray-700";
   const seqBg = darkMode ? "bg-[#333]" : "bg-[#d4d4d4]";
   const seqBorder = darkMode ? "border-gray-600" : "border-gray-400";
+  const delayLabel = delayDivisions.find((d) => d.value === params.delayRate)?.label || "1/4";
 
   return (
     <div className={`h-screen w-full ${darkMode ? 'bg-[#121212]' : 'bg-[#333]'} flex flex-col items-center justify-start md:justify-center p-2 md:p-4 overflow-y-auto transition-colors duration-300`}>
       <HelpModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <DelayRateModal
+        isOpen={showDelayModal}
+        onClose={() => setShowDelayModal(false)}
+        value={params.delayRate}
+        onSelect={(v) => updateParam('delayRate', v)}
+      />
 
       <div className={`w-full max-w-4xl shrink-0 ${mainBg} rounded-xl shadow-2xl border-4 ${panelBorder} flex flex-col relative transition-colors duration-300 mb-8 md:mb-0`}>
         <div className="absolute top-2 right-4 z-20 flex gap-4 items-center">
@@ -449,7 +511,15 @@ const App = () => {
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">DELAY</div>
                 <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
-                <Knob label="D RATE" value={params.delayRate} onChange={(v) => updateParam('delayRate', v)} size="sm" color="white" darkMode={darkMode} />
+                <div className="flex flex-col items-center justify-start h-full p-0.5 relative">
+                  <div className={`text-[6px] md:text-[8px] font-bold ${darkMode ? 'text-gray-300' : 'text-gray-800'} mb-0.5 text-center uppercase`}>D RATE</div>
+                  <button
+                    onClick={() => setShowDelayModal(true)}
+                    className={`px-2 py-1 text-[8px] md:text-[10px] font-bold rounded border-2 shadow-md transition-colors duration-150 ${darkMode ? 'bg-gray-900 text-white border-gray-600 hover:border-white' : 'bg-white text-black border-gray-400 hover:border-black'}`}
+                  >
+                    {delayLabel} NOTE
+                  </button>
+                </div>
                 <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
               </div>

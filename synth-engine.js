@@ -84,8 +84,10 @@
               r: { x1: 0, x2: 0, y1: 0, y2: 0 }
           };
 
-          this.delayL = new DelayLine(96000);
-          this.delayR = new DelayLine(96000);
+          const maxDelaySeconds = 12;
+          const maxDelaySamples = Math.ceil(this.fs * maxDelaySeconds);
+          this.delayL = new DelayLine(maxDelaySamples);
+          this.delayR = new DelayLine(maxDelaySamples);
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
 
@@ -113,7 +115,7 @@
               vcaDecay: 0.0, vcaEgMode: 0, volume: 0.8,
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
-              delayRate: 0.3, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
+                delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
               masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
           };
 
@@ -259,9 +261,11 @@
 
       processDelay(inL, inR) {
           const currentRate = this.delayTimeSmoother.process(0.005);
-          const baseTime = 0.01 + (currentRate * 0.99);
-          const sampsL = baseTime * this.fs;
-          const sampsR = sampsL * (1.0 + (this.params.delayWidth * 0.5));
+          const tempo = Math.max(40, Math.min(300, this.params.tempo));
+          const baseTime = (240 / tempo) * currentRate; // whole note = 240/BPM
+          const maxSamples = this.delayL.buffer.length - 2;
+          const sampsL = Math.min(baseTime * this.fs, maxSamples);
+          const sampsR = Math.min(sampsL * (1.0 + (this.params.delayWidth * 0.5)), maxSamples);
 
           const dL = this.delayL.read(sampsL);
           const dR = this.delayR.read(sampsR);

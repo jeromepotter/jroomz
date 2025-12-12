@@ -46,12 +46,12 @@
     },
     {
       name: "WOBBLE-GHOST",
-      params: { tempo: 75, vco1Freq: 0.2, vco2Freq: 0.21, vco1Wave: 1, fmAmount: 0.3, cutoff: 0.35, resonance: 0.6, vcfEgAmt: 0.4, vcaEgMode: 1, vcaDecay: 0.6, reverbMix: 0.4, reverbDecay: 0.8, delayWet: 0.3, delayRate: 0.6, masterHP: 0.0, masterLP: 0.8 },
+      params: { tempo: 75, vco1Freq: 0.2, vco2Freq: 0.21, vco1Wave: 1, fmAmount: 0.3, cutoff: 0.35, resonance: 0.6, vcfEgAmt: 0.4, vcaEgMode: 1, vcaDecay: 0.6, reverbMix: 0.4, reverbDecay: 0.8, delayWet: 0.3, delayRate: 0.5, masterHP: 0.0, masterLP: 0.8 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random() * 0.4 + 0.3, velocity: Math.random() * 0.5 + 0.4 }))
     },
     {
       name: "LASER-TAG",
-      params: { tempo: 145, vco1Freq: 0.6, vco2Freq: 0.8, hardSync: 1, vco2EgAmt: 0.9, vcoDecay: 0.2, cutoff: 0.8, resonance: 0.1, vcaDecay: 0.1, delayWet: 0.2, delayRate: 0.1, delayFdbk: 0.6, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 145, vco1Freq: 0.6, vco2Freq: 0.8, hardSync: 1, vco2EgAmt: 0.9, vcoDecay: 0.2, cutoff: 0.8, resonance: 0.1, vcaDecay: 0.1, delayWet: 0.2, delayRate: 0.125, delayFdbk: 0.6, masterHP: 0.0, masterLP: 1.0 },
       steps: [{ p: 0.8, v: 0.9 }, { p: 0.1, v: 0.0 }, { p: 0.7, v: 0.8 }, { p: 0.1, v: 0.0 }, { p: 0.9, v: 0.9 }, { p: 0.1, v: 0.0 }, { p: 0.6, v: 0.8 }, { p: 0.1, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
@@ -66,7 +66,7 @@
     },
     {
       name: "DATA-SKIP",
-      params: { tempo: 100, vco1Freq: 0.4, fmAmount: 0.5, seqPitchMod: 1, cutoff: 0.5, vcfEgAmt: 0.8, vcfDecay: 0.1, vcaDecay: 0.1, delayWet: 0.3, delayRate: 0.15, delayWidth: 0.9, masterHP: 0.1, masterLP: 1.0 },
+      params: { tempo: 100, vco1Freq: 0.4, fmAmount: 0.5, seqPitchMod: 1, cutoff: 0.5, vcfEgAmt: 0.8, vcfDecay: 0.1, vcaDecay: 0.1, delayWet: 0.3, delayRate: 0.125, delayWidth: 0.9, masterHP: 0.1, masterLP: 1.0 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: Math.random() > 0.4 ? 0.8 : 0.0 }))
     },
     {
@@ -76,7 +76,7 @@
     },
     {
       name: "ACID-RAIN",
-      params: { tempo: 135, vco1Freq: 0.3, vco1Wave: 1, cutoff: 0.3, resonance: 0.85, vcfEgAmt: 0.7, vcfDecay: 0.3, delayWet: 0.3, delayRate: 0.33, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 135, vco1Freq: 0.3, vco1Wave: 1, cutoff: 0.3, resonance: 0.85, vcfEgAmt: 0.7, vcfDecay: 0.3, delayWet: 0.3, delayRate: 0.25, masterHP: 0.0, masterLP: 1.0 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: 0.8 }))
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       name: "SUB-ORBITAL",
-      params: { tempo: 50, vco1Freq: 0.1, vco2Freq: 0.15, fmAmount: 0.2, cutoff: 0.25, resonance: 0.6, vcaEgMode: 1, vcaDecay: 0.8, delayWet: 0.4, delayRate: 0.8, reverbMix: 0.5, masterHP: 0.0, masterLP: 0.3 },
+      params: { tempo: 50, vco1Freq: 0.1, vco2Freq: 0.15, fmAmount: 0.2, cutoff: 0.25, resonance: 0.6, vcaEgMode: 1, vcaDecay: 0.8, delayWet: 0.4, delayRate: 1, reverbMix: 0.5, masterHP: 0.0, masterLP: 0.3 },
       steps: [{ p: 0.2, v: 0.8 }, { p: 0.0, v: 0.0 }, { p: 0.3, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.25, v: 0.7 }, { p: 0.0, v: 0.0 }, { p: 0.1, v: 0.0 }, { p: 0.0, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
@@ -111,22 +111,22 @@
     },
     {
       name: "MECHA-STOMP",
-      params: { tempo: 70, vco1Freq: 0.15, vco1Wave: 1, noiseLevel: 0.4, cutoff: 0.4, vcfEgAmt: 0.8, vcfDecay: 0.4, vcaDecay: 0.4, delayWet: 0.2, delayRate: 0.1, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 70, vco1Freq: 0.15, vco1Wave: 1, noiseLevel: 0.4, cutoff: 0.4, vcfEgAmt: 0.8, vcfDecay: 0.4, vcaDecay: 0.4, delayWet: 0.2, delayRate: 0.125, masterHP: 0.0, masterLP: 1.0 },
       steps: [{ p: 0.5, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.6, v: 0.9 }, { p: 0.2, v: 0.3 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
       name: "SWARM-HIVE",
-      params: { tempo: 170, vco1Freq: 0.4, vco2Freq: 0.43, fmAmount: 0.4, noiseLevel: 0.2, cutoff: 0.6, vcfEgAmt: 0.2, vcaEgMode: 1, vcaDecay: 0.2, delayWet: 0.5, delayRate: 0.05, delayFdbk: 0.8, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 170, vco1Freq: 0.4, vco2Freq: 0.43, fmAmount: 0.4, noiseLevel: 0.2, cutoff: 0.6, vcfEgAmt: 0.2, vcaEgMode: 1, vcaDecay: 0.2, delayWet: 0.5, delayRate: 0.0625, delayFdbk: 0.8, masterHP: 0.0, masterLP: 1.0 },
       steps: Array(8).fill(null).map(() => ({ pitch: 0.5 + Math.random() * 0.2, velocity: 0.7 }))
     },
     {
       name: "VOID-CALLER",
-      params: { tempo: 40, vco1Freq: 0.1, vco2Freq: 0.105, vco1Wave: 0, vco2Wave: 0, cutoff: 0.2, resonance: 0.3, vcaEgMode: 1, vcaDecay: 1.0, reverbMix: 0.9, reverbDecay: 1.0, delayWet: 0.6, delayRate: 0.9, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 40, vco1Freq: 0.1, vco2Freq: 0.105, vco1Wave: 0, vco2Wave: 0, cutoff: 0.2, resonance: 0.3, vcaEgMode: 1, vcaDecay: 1.0, reverbMix: 0.9, reverbDecay: 1.0, delayWet: 0.6, delayRate: 1, masterHP: 0.0, masterLP: 1.0 },
       steps: [{ p: 0.1, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.2, v: 0.8 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
       name: "BRAIN-MELT",
-      params: { tempo: 220, vco1Freq: 0.5, vco2Freq: 0.9, fmAmount: 1.0, hardSync: 1, noiseLevel: 0.5, cutoff: 0.8, resonance: 0.9, noiseVcfMod: 0.8, vcaDecay: 0.3, delayWet: 0.4, delayRate: 0.13, delayFdbk: 0.9, reverbMix: 0.3, masterHP: 0.0, masterLP: 1.0 },
+      params: { tempo: 220, vco1Freq: 0.5, vco2Freq: 0.9, fmAmount: 1.0, hardSync: 1, noiseLevel: 0.5, cutoff: 0.8, resonance: 0.9, noiseVcfMod: 0.8, vcaDecay: 0.3, delayWet: 0.4, delayRate: 0.125, delayFdbk: 0.9, reverbMix: 0.3, masterHP: 0.0, masterLP: 1.0 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: Math.random() }))
     }
   ];
