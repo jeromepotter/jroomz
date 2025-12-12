@@ -89,9 +89,7 @@
           this.delayR = new DelayLine(maxDelaySamples);
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
-
-          // FIX 1: Velocity Smoother to prevent clicks on step changes
-          this.velSmoother = new SmoothValue(0.5);
+          this.velSmoother = new SmoothValue(0.5); // Smoother for velocity
 
           const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
           const stereospread = 23;
@@ -114,10 +112,15 @@
               vco2Freq: 0.35, vco2Wave: 0, vco2Level: 0.0, vco2EgAmt: 0.5, hardSync: 0, fmAmount: 0,
               vcoDecay: 0.5, seqPitchMod: 1, noiseLevel: 0,
               cutoff: 0.5, resonance: 0.2, vcfEgAmt: 0.5, vcfDecay: 0.5, noiseVcfMod: 0,
-              vcaDecay: 0.0, vcaEgMode: 0, volume: 0.8,
+              
+              // CHANGED: Replaced vcaEgMode with vcaAttack
+              vcaAttack: 0.003, 
+              vcaDecay: 0.0, 
+              
+              volume: 0.8,
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
-                delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
+              delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
               masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
           };
 
@@ -183,7 +186,9 @@
       }
 
       processEnvelopes() {
-          const attackTime = this.params.vcaEgMode === 0 ? 0.003 : 0.020;
+          // CHANGED: Use knob value. Min 0.001 to avoid Infinity/div-by-zero or bad clicks
+          const attackTime = Math.max(0.001, this.params.vcaAttack);
+          
           const attackInc = 1.0 / (attackTime * this.fs);
           const runEnv = (env, decayParam) => {
               if (env.phase === 1) {
@@ -355,9 +360,8 @@
               if (trigger) {
                   const step = this.sequencer.steps[this.sequencer.currentStep];
                   
-                  // FIX 2: Ring Out Logic
-                  // If velocity is low (0), we SKIP triggering.
-                  // This allows the previous envelope to decay naturally (Ring Out).
+                  // Ring out logic:
+                  // If velocity is near zero, do NOT retrigger. This lets the tail ring out.
                   if (step.velocity > 0.05) {
                       this.sequencer.lastTrigVel = step.velocity;
                       this.triggerEnvelopes();
@@ -366,7 +370,7 @@
 
               this.processEnvelopes();
 
-              // FIX 1: Apply smoothing to the velocity value
+              // Velocity Smoothing
               this.velSmoother.set(this.sequencer.lastTrigVel);
               const vel = this.velSmoother.process(0.005);
 
