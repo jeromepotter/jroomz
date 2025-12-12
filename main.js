@@ -423,6 +423,21 @@ const App = () => {
     updateParam('run', newVal);
   };
 
+  // --- NEW: SPACEBAR LISTENER ---
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for spacebar and ensure it's not a repeat event (holding down)
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault(); // Prevent scrolling
+        toggleRun();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleRun]); 
+  // ------------------------------
+
   const doTrigger = async () => {
     if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
     if (workletNode) workletNode.port.postMessage({ type: 'TRIGGER' });
@@ -558,7 +573,6 @@ const App = () => {
                 <Knob label="NOISE MOD" value={params.noiseVcfMod} onChange={(v) => updateParam('noiseVcfMod', v)} darkMode={darkMode} />
               </div>
               <div className="col-span-4 flex justify-evenly w-full pl-1">
-                {/* CHANGED: Swapped Switch for Knob (Attack) */}
                 <Knob label="ATTACK" value={params.vcaAttack} onChange={(v) => updateParam('vcaAttack', v)} min={0.001} max={0.4} darkMode={darkMode} />
                 <Knob label="DECAY" value={params.vcaDecay} onChange={(v) => updateParam('vcaDecay', v)} darkMode={darkMode} />
                 <Knob label="VOLUME" value={params.volume} onChange={(v) => updateParam('volume', v)} size="lg" darkMode={darkMode} />
