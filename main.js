@@ -9,34 +9,87 @@ const HelpModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 modal-overlay bg-black/80" onClick={onClose}>
-      <div className="w-full max-w-4xl bg-black text-white border-2 border-white shadow-2xl p-8 relative flex flex-col max-h-[90vh] overflow-y-auto font-poppins" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-5xl bg-black text-white border-2 border-white shadow-2xl p-8 relative flex flex-col max-h-[90vh] overflow-y-auto font-poppins" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-bold hover:text-gray-400">&times;</button>
         <h2 className="text-4xl mb-8 font-bold tracking-tight border-b-2 border-white pb-4 uppercase">Operational Manual</h2>
-        <div className="space-y-12 text-sm leading-relaxed">
+        <div className="space-y-10 text-sm leading-relaxed">
           <section>
-            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">1. Percussion Synthesizer</h3>
-            <p className="mb-4 text-gray-300">The brain of the machine. It steps through 8 voltages.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><span className="font-bold text-white">TEMPO</span><br /><span className="text-gray-400">Sets the speed.</span></div>
-              <div><span className="font-bold text-white">PITCH (Top)</span><br /><span className="text-gray-400">Sets frequency offset per step.</span></div>
-              <div><span className="font-bold text-white">VEL (Bottom)</span><br /><span className="text-gray-400">Sets volume and envelope depth per step.</span></div>
+            <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">1. Sequencer Core</h3>
+            <p className="text-gray-300 mb-3">The sequencer drives all movement. It runs 8 steps in order, or you can advance them manually.</p>
+            <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>TEMPO</strong>: Clock speed in BPM. Higher values race through the steps; lower values give the envelopes time to bloom.</li>
+              <li><strong>PITCH (top row of small knobs)</strong>: Per-step tuning. Fully left is a low thud, fully right is a high blip.</li>
+              <li><strong>VEL (bottom row)</strong>: Per-step velocity. This scales the loudness <em>and</em> how hard envelopes hit the oscillators and filter.</li>
+              <li><strong>RUN</strong>: Starts or stops the internal clock. When stopped you can tap <strong>ADV</strong> to walk steps one by one.</li>
+              <li><strong>TRIG</strong>: Fires the envelopes immediately on the current step so you can audition sounds without moving the sequencer.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">2. Oscillator Bank</h3>
+            <p className="text-gray-300 mb-3">Two VCOs generate the raw tone. They can run independently, sync together, or frequency-modulate one another.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="font-bold text-white mb-1">VCO 1</p>
+                <ul className="list-disc list-inside text-gray-300 space-y-1">
+                  <li><strong>VCO1 FREQ</strong>: Base pitch offset. Centered around midrange; left lowers, right raises.</li>
+                  <li><strong>WAVE</strong>: ▲ is a smooth triangle-inspired wave. Π is a bright, edgy pulse.</li>
+                  <li><strong>VCO1 LVL</strong>: Mix amount going into the filter.</li>
+                  <li><strong>VCO1 EG</strong>: Envelope depth applied to VCO1 pitch. Positive values bend upward on each hit; negative values dive down.</li>
+                  <li><strong>DECAY</strong>: Shared pitch envelope decay for both oscillators. Short for blips, long for laser sweeps.</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">VCO 2</p>
+                <ul className="list-disc list-inside text-gray-300 space-y-1">
+                  <li><strong>VCO2 FREQ</strong>: Second oscillator offset. Pair it with hard sync for ripping harmonics or leave unsynced for beating.</li>
+                  <li><strong>WAVE</strong>: Same shapes as VCO1.</li>
+                  <li><strong>VCO2 LVL</strong>: Mix amount for VCO2.</li>
+                  <li><strong>VCO2 EG</strong>: Envelope depth for VCO2 pitch.</li>
+                  <li><strong>SYNC</strong>: Forces VCO2 to reset to VCO1’s phase each cycle. Great for growls; turn off for free-running motion.</li>
+                  <li><strong>FM AMT</strong>: How much VCO1 modulates VCO2 pitch. Small amounts add grit, high amounts create metallic tones.</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="font-bold text-white mb-1">Sequencer Routing</p>
+              <ul className="list-disc list-inside text-gray-300 space-y-1">
+                <li><strong>SEQ PITCH</strong>: OFF leaves the oscillators droning. <strong>1&amp;2</strong> tracks both oscillators with the step pitch. <strong>2</strong> only routes the sequencer to VCO2, leaving VCO1 steady.</li>
+              </ul>
             </div>
           </section>
+
           <section>
-            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">2. Oscillator Bank</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div><span className="font-bold text-white">VCO FREQ</span><br /><span className="text-gray-400">Pitch offset.</span></div>
-              <div><span className="font-bold text-white">WAVE</span><br /><span className="text-gray-400">▲ (Smooth), Π (Harsh).</span></div>
-              <div><span className="font-bold text-white">SEQ PITCH SWITCH</span><br /><ul className="text-gray-400 mt-1"><li><strong>OFF:</strong> Drone mode.</li><li><strong>1&2:</strong> Both track sequencer.</li><li><strong>2:</strong> Only VCO 2 tracks sequencer.</li></ul></div>
-            </div>
+            <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">3. Noise & Filter Section</h3>
+            <p className="text-gray-300 mb-3">Tone shaping happens here. The noise generator and ladder filter sculpt the attack and brightness.</p>
+            <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>NOISE</strong>: Adds white noise before the filter for snares and shakers.</li>
+              <li><strong>CUTOFF</strong>: Sets the main filter ceiling. Turn right for brighter hits, left for muffled thumps.</li>
+              <li><strong>RES</strong>: Emphasizes frequencies right at the cutoff. Higher values whistle or ring.</li>
+              <li><strong>EG AMT</strong>: Bipolar depth for the filter envelope. Right sweeps upward on each hit; left sweeps downward.</li>
+              <li><strong>DECAY</strong>: How long the filter envelope takes to close.</li>
+              <li><strong>NOISE MOD</strong>: Lets the noise signal wiggle the cutoff for dusty or unstable highs.</li>
+            </ul>
           </section>
+
           <section>
-            <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-1 uppercase">3. Filter & Envelopes</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div><span className="font-bold text-white">CUTOFF</span><br /><span className="text-gray-400">Frequency ceiling (Low Pass).</span></div>
-              <div><span className="font-bold text-white">RES</span><br /><span className="text-gray-400">Whistling peak at cutoff.</span></div>
-              <div><span className="font-bold text-white">VCA MODE</span><br /><span className="text-gray-400"><strong>FAST:</strong> Percussive. <strong>SLOW:</strong> Swelling/Pad.</span></div>
-            </div>
+            <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">4. Amplifier & Dynamics</h3>
+            <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>VCA MODE</strong>: <em>FAST</em> uses a sharp attack for percussive clicks. <em>SLOW</em> softens the start for longer, swelling bodies.</li>
+              <li><strong>VCA DECAY</strong>: Tail length of the volume envelope.</li>
+              <li><strong>VOLUME</strong>: Final gain before effects.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">5. Global Filter & Effects</h3>
+            <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>HPF</strong>: Rolls off low end. Use lightly to tame sub-rumble.</li>
+              <li><strong>LPF</strong>: Smooths the final brightness after everything else.</li>
+              <li><strong>GLB RES</strong>: Adds a gentle bump at the LPF cutoff. Subtle settings thicken the mix; higher settings give a rounded peak without harshness.</li>
+              <li><strong>DELAY</strong> (D WET / D RATE / D FDBK / D WIDTH): Controls wet level, repeat time, feedback amount, and stereo offset.</li>
+              <li><strong>REVERB</strong> (R WET / R LEN): Mix amount and decay length of the hall-style reverb.</li>
+            </ul>
           </section>
         </div>
       </div>
@@ -44,7 +97,32 @@ const HelpModal = ({ isOpen, onClose }) => {
   );
 };
 
-const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size = "md", color = "black", darkMode }) => {
+const delayDivisions = [
+  { label: "1/64", value: 1 / 64 },
+  { label: "1/32", value: 1 / 32 },
+  { label: "1/32 D", value: 3 / 64 },
+  { label: "1/16", value: 1 / 16 },
+  { label: "1/12", value: 1 / 12 },
+  { label: "1/16 D", value: 3 / 32 },
+  { label: "1/8", value: 1 / 8 },
+  { label: "1/8 D", value: 3 / 16 },
+  { label: "1/4", value: 1 / 4 },
+  { label: "1/4 D", value: 3 / 8 },
+  { label: "1/2", value: 1 / 2 },
+  { label: "1", value: 1 },
+];
+
+const getNearestDelayDivision = (val) => {
+  let closest = delayDivisions[0].value;
+  let minDiff = Math.abs(val - closest);
+  delayDivisions.forEach(d => {
+    const diff = Math.abs(val - d.value);
+    if (diff < minDiff) { minDiff = diff; closest = d.value; }
+  });
+  return closest;
+};
+
+const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size = "md", color = "black", darkMode, displayFormatter }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -102,9 +180,13 @@ const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size 
     indicatorBg = "bg-white";
   }
 
+  const formattedValue = isDragging
+    ? (displayFormatter ? displayFormatter(value) : (max > 10 ? Math.round(value) : null))
+    : null;
+
   return (
     <div className="flex flex-col items-center justify-start h-full p-0.5 relative">
-      {isDragging && max > 10 && <div className="knob-value-tooltip">{Math.round(value)}</div>}
+      {formattedValue !== null && <div className="knob-value-tooltip">{formattedValue}</div>}
 
       <div className={`${textSize} font-bold ${textColor} mb-0.5 text-center leading-none px-0.5 tracking-tight uppercase`}>{label}</div>
       <div
@@ -203,27 +285,48 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
+  const fileInputRef = useRef(null);
 
-  const [params, setParams] = useState(window.PRESETS[0].params);
+  const initialParams = { ...window.PRESETS[0].params, delayRate: getNearestDelayDivision(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
+  const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
   // Merge with defaults when loading
-  const loadPreset = (index) => {
-    const p = window.PRESETS[index];
+  const applyPatch = (patch) => {
+    const p = patch;
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
+    fullParams.delayRate = getNearestDelayDivision(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
+
+    const incomingSteps = Array.isArray(p.steps) ? p.steps : window.DEFAULT_STEPS;
+    const normalizedSteps = incomingSteps.map((s, idx) => ({
+      pitch: typeof s.pitch === 'number' ? s.pitch : (window.DEFAULT_STEPS[idx]?.pitch ?? 0.5),
+      velocity: typeof s.velocity === 'number' ? s.velocity : (window.DEFAULT_STEPS[idx]?.velocity ?? 0.5),
+    }));
+    while (normalizedSteps.length < window.DEFAULT_STEPS.length) {
+      const idx = normalizedSteps.length;
+      normalizedSteps.push({
+        pitch: window.DEFAULT_STEPS[idx].pitch,
+        velocity: window.DEFAULT_STEPS[idx].velocity,
+      });
+    }
+    if (normalizedSteps.length > window.DEFAULT_STEPS.length) {
+      normalizedSteps.length = window.DEFAULT_STEPS.length;
+    }
 
     setParams(fullParams);
-    setSteps([...p.steps]);
-    setCurrentPresetName(p.name);
+    setSteps(normalizedSteps);
+    setCurrentPresetName(p.name || 'CUSTOM');
 
     if (workletNode) {
       Object.keys(fullParams).forEach(key => {
         workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: fullParams[key] } });
       });
-      workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: p.steps } });
+      workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: normalizedSteps } });
     }
   };
+
+  const loadPreset = (index) => applyPatch(window.PRESETS[index]);
 
   const startAudio = async () => {
     if (audioCtx) return;
@@ -249,8 +352,9 @@ const App = () => {
   };
 
   const updateParam = (id, value) => {
-    setParams(prev => ({ ...prev, [id]: value }));
-    if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value } });
+    const newValue = id === 'delayRate' ? getNearestDelayDivision(value) : value;
+    setParams(prev => ({ ...prev, [id]: newValue }));
+    if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value: newValue } });
   };
 
   const updateStep = (index, field, value) => {
@@ -258,6 +362,50 @@ const App = () => {
     newSteps[index] = { ...newSteps[index], [field]: value };
     setSteps(newSteps);
     if (workletNode) workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: newSteps } });
+  };
+
+  const savePatch = () => {
+    const payload = {
+      name: currentPresetName,
+      params: { ...params },
+      steps,
+    };
+    const randomId = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    const filename = `jroomz-patch-${randomId}.json`;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (parsed && parsed.params && parsed.steps) {
+          applyPatch(parsed);
+        }
+      } catch (err) {
+        console.error('Invalid patch file', err);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const triggerLoad = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const toggleRun = async () => {
@@ -290,24 +438,38 @@ const App = () => {
   }
 
   const mainBg = darkMode ? "bg-[#222]" : "bg-[#e5e5e5]";
-  const panelBorder = darkMode ? "border-gray-700" : "border-gray-800";
+  const panelBorder = darkMode ? "border-gray-700" : "border-gray-700";
   const seqBg = darkMode ? "bg-[#333]" : "bg-[#d4d4d4]";
   const seqBorder = darkMode ? "border-gray-600" : "border-gray-400";
-  const sidePanel = darkMode ? "bg-[#111]" : "bg-[#3e2723]";
 
   return (
     <div className={`h-screen w-full ${darkMode ? 'bg-[#121212]' : 'bg-[#333]'} flex flex-col items-center justify-start md:justify-center p-2 md:p-4 overflow-y-auto transition-colors duration-300`}>
       <HelpModal isOpen={showModal} onClose={() => setShowModal(false)} />
 
       <div className={`w-full max-w-4xl shrink-0 ${mainBg} rounded-xl shadow-2xl border-4 ${panelBorder} flex flex-col relative transition-colors duration-300 mb-8 md:mb-0`}>
-        <div className="absolute top-2 right-4 z-20 flex gap-4 items-center">
-          <PresetSelector currentPreset={currentPresetName} onSelect={loadPreset} darkMode={darkMode} />
+        <div className="absolute top-2 right-4 z-20 flex gap-3 items-center">
+          <div className="flex items-center gap-1">
+            <PresetSelector currentPreset={currentPresetName} onSelect={loadPreset} darkMode={darkMode} />
+            <button
+              onClick={savePatch}
+              title="Save patch"
+              className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
+            >
+              💾
+            </button>
+            <button
+              onClick={triggerLoad}
+              title="Load patch"
+              className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
+            >
+              📂
+            </button>
+            <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileInput} />
+          </div>
           <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
           <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
         </div>
         <div className={`absolute top-2 left-4 z-20 font-futura-bold text-lg tracking-widest opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
-        <div className={`hidden md:block absolute left-0 top-0 bottom-0 w-6 ${sidePanel} border-r-2 border-black z-10 shadow-2xl`}></div>
-        <div className={`hidden md:block absolute right-0 top-0 bottom-0 w-6 ${sidePanel} border-l-2 border-black z-10 shadow-2xl`}></div>
 
         <div className="flex flex-col md:px-8 py-10 w-full">
           <div className={`${seqBg} border-2 ${seqBorder} rounded-lg p-2 shadow-inner mb-4 transition-colors duration-300`}>
@@ -394,13 +556,22 @@ const App = () => {
             </div>
           </div>
 
-          <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-between gap-2`}>
-            <span className={`text-[8px] font-black tracking-[0.4em] hidden md:block opacity-50 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>SEMI-MODULAR ANALOG PERCUSSION</span>
+          <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-end gap-2`}>
             <div className={`w-full md:w-auto flex items-center justify-between md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">DELAY</div>
                 <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
-                <Knob label="D RATE" value={params.delayRate} onChange={(v) => updateParam('delayRate', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob
+                  label="D RATE"
+                  value={params.delayRate}
+                  onChange={(v) => updateParam('delayRate', v)}
+                  min={delayDivisions[0].value}
+                  max={delayDivisions[delayDivisions.length - 1].value}
+                  size="sm"
+                  color="white"
+                  darkMode={darkMode}
+                  displayFormatter={(v) => `${delayDivisions.find((d) => d.value === getNearestDelayDivision(v))?.label || '1/4'}`}
+                />
                 <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
               </div>
@@ -413,6 +584,7 @@ const App = () => {
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">FX</div>
                 <Knob label="HPF" value={params.masterHP} onChange={(v) => updateParam('masterHP', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob label="LPF" value={params.masterLP} onChange={(v) => updateParam('masterLP', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="GLB RES" value={params.masterRes} onChange={(v) => updateParam('masterRes', v)} size="sm" color="white" darkMode={darkMode} />
               </div>
             </div>
           </div>
