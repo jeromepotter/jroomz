@@ -55,6 +55,7 @@ const HelpModal = ({ isOpen, onClose }) => {
               <p className="font-bold text-white mb-1">Sequencer Routing</p>
               <ul className="list-disc list-inside text-gray-300 space-y-1">
                 <li><strong>SEQ PITCH</strong>: OFF leaves the oscillators droning. <strong>1&amp;2</strong> tracks both oscillators with the step pitch. <strong>2</strong> only routes the sequencer to VCO2, leaving VCO1 steady.</li>
+                <li><strong>VEL MOD</strong>: Sends velocity beyond the usual envelope intensity. Choose <em>VOL</em> for the standard loudness boost, <em>RES</em> to push filter resonance on harder hits, or <em>FM</em> for metallic grit that scales with velocity.</li>
               </ul>
             </div>
           </section>
@@ -593,6 +594,7 @@ const App = () => {
                 <Knob label="DECAY" value={params.vcoDecay} onChange={(v) => updateParam('vcoDecay', v)} darkMode={darkMode} />
                 {/* Routing */}
                 <Switch label="SEQ PITCH" value={params.seqPitchMod} options={['OFF', '1&2', '2']} onChange={(v) => updateParam('seqPitchMod', v)} darkMode={darkMode} />
+                <Switch label="VEL MOD" value={params.velModTarget} options={['VOL', 'RES', 'FM']} onChange={(v) => updateParam('velModTarget', v)} darkMode={darkMode} />
                 {/* Interactions */}
                 <Switch label="SYNC" value={params.hardSync} options={['OFF', 'ON']} onChange={(v) => updateParam('hardSync', v)} darkMode={darkMode} />
                 <Knob label="FM AMT" value={params.fmAmount} onChange={(v) => updateParam('fmAmount', v)} darkMode={darkMode} />
