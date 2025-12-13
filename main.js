@@ -385,37 +385,43 @@ const App = () => {
 
   const loadPreset = (index) => applyPatch(window.PRESETS[index]);
 
-  const startAudio = async () => {
-    if (audioCtx) return;
-
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-    try {
-      const node = await window.createJroomzWorkletNode(ctx);
-      node.connect(ctx.destination);
-      node.port.onmessage = (e) => {
-        if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step);
-      };
-
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
+    const startAudio = async () => {
+      if (audioCtx) {
+        return;
       }
 
-      for (const key of Object.keys(params)) {
-        node.port.postMessage({
-          type: 'PARAM_UPDATE',
-          payload: { id: key, value: params[key] }
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+      try {
+        const node = await window.createJroomzWorkletNode(ctx);
+        node.connect(ctx.destination);
+
+        node.port.onmessage = (e) => {
+          if (e.data && e.data.type === 'STEP_CHANGE') {
+            setCurrentStep(e.data.step);
+          }
+        };
+
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+
+        Object.keys(params).forEach((key) => {
+          node.port.postMessage({
+            type: 'PARAM_UPDATE',
+            payload: { id: key, value: params[key] }
+          });
         });
-      }
-      node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
 
-      setAudioCtx(ctx);
-      setWorkletNode(node);
-      setIsStarted(true);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+        node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
+
+        setAudioCtx(ctx);
+        setWorkletNode(node);
+        setIsStarted(true);
+      } catch (err) {
+        console.error(err);
+      }
+    };
 
   const updateParam = (id, value) => {
     const newValue = id === 'delayRate' ? clampDelay(value) : value;
