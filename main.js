@@ -77,18 +77,19 @@ const HelpModal = ({ isOpen, onClose }) => {
             <ul className="list-disc list-inside text-gray-300 space-y-1">
               <li><strong>ATTACK</strong>: Controls the onset speed. Low values are punchy; higher values soften the start.</li>
               <li><strong>DECAY</strong>: Tail length of the volume envelope.</li>
-              <li><strong>VOLUME</strong>: Final gain before effects.</li>
+              <li><strong>VOLUME</strong>: Final output gain after the entire effects chain.</li>
             </ul>
           </section>
 
           <section>
             <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">5. Global Filter & Effects</h3>
             <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>BENDER</strong> (MIX / CRSH / DROP / DRIVE / RATE): Circuit-bent stage that crushes bits, downsamples, drops packets, and overdrives before feeding the delay.</li>
               <li><strong>HPF</strong>: Rolls off low end. Use lightly to tame sub-rumble.</li>
               <li><strong>LPF</strong>: Smooths the final brightness after everything else.</li>
               <li><strong>GLB RES</strong>: Adds a gentle bump at the LPF cutoff. Subtle settings thicken the mix; higher settings give a rounded peak without harshness.</li>
-              <li><strong>DELAY</strong> (D WET / D RATE / D FDBK / D WIDTH): Controls wet level, repeat time, feedback amount, and stereo offset.</li>
-              <li><strong>REVERB</strong> (R WET / R LEN): Mix amount and decay length of the hall-style reverb.</li>
+              <li><strong>DELAY</strong> (MIX / RATE / FDBK / WIDTH): Controls wet level, repeat time, feedback amount, and stereo offset.</li>
+              <li><strong>REVERB</strong> (MIX / LEN): Mix amount and decay length of the hall-style reverb.</li>
             </ul>
           </section>
         </div>
@@ -530,12 +531,12 @@ const App = () => {
           <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
           <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
         </div>
-        <div className={`absolute top-2 left-4 z-20 font-futura-bold text-lg tracking-widest opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
+        <div className={`absolute top-2 left-4 z-20 font-poppins font-black tracking-tight text-lg opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
 
         <div className="flex flex-col md:px-8 py-10 w-full">
           <div className={`${seqBg} border-2 ${seqBorder} rounded-lg p-2 shadow-inner mb-4 transition-colors duration-300`}>
             <div className={`flex items-center justify-between mb-2 px-2 border-b ${darkMode ? 'border-gray-600' : 'border-gray-300'} pb-2`}>
-              <h2 className={`text-xs font-black ${darkMode ? 'text-gray-400' : 'text-gray-700'} tracking-wider`}>PERCUSSION SYNTHESIZER</h2>
+              <h2 className={`text-xs font-black ${darkMode ? 'text-gray-400' : 'text-gray-700'} tracking-wider`}>&nbsp;</h2>
             </div>
             <div className="flex flex-row w-full gap-2 items-stretch">
               <div className={`flex flex-col justify-between items-center pr-2 border-r-2 ${darkMode ? 'border-gray-600' : 'border-gray-300'} min-w-[50px]`}>
@@ -630,10 +631,18 @@ const App = () => {
           <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-end gap-2`}>
             <div className={`w-full md:w-auto flex items-center justify-between md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
+                <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">BEND</div>
+                <Knob label="MIX" value={params.dataBenderMix} onChange={(v) => updateParam('dataBenderMix', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="CRSH" value={params.dataBenderCrush} onChange={(v) => updateParam('dataBenderCrush', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="DROP" value={params.dataBenderDrop} onChange={(v) => updateParam('dataBenderDrop', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="DRIVE" value={params.dataBenderDrive} onChange={(v) => updateParam('dataBenderDrive', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="RATE" value={params.dataBenderRate} onChange={(v) => updateParam('dataBenderRate', v)} size="sm" color="white" darkMode={darkMode} />
+              </div>
+              <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">DELAY</div>
-                <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="MIX" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob
-                  label="D RATE"
+                  label="RATE"
                   value={delayValueToKnobPos(params.delayRate)}
                   onChange={handleDelayRateChange}
                   min={0}
@@ -643,13 +652,13 @@ const App = () => {
                   darkMode={darkMode}
                   displayFormatter={(v) => `${getNearestDelayDivision(knobPosToDelayValue(v)).label}`}
                 />
-                <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
-                <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
               </div>
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">REV</div>
-                <Knob label="R WET" value={params.reverbMix} onChange={(v) => updateParam('reverbMix', v)} size="sm" color="white" darkMode={darkMode} />
-                <Knob label="R LEN" value={params.reverbDecay} onChange={(v) => updateParam('reverbDecay', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="MIX" value={params.reverbMix} onChange={(v) => updateParam('reverbMix', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="LEN" value={params.reverbDecay} onChange={(v) => updateParam('reverbDecay', v)} size="sm" color="white" darkMode={darkMode} />
               </div>
               <div className="flex items-center gap-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">FX</div>
