@@ -531,12 +531,12 @@ const App = () => {
           <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
           <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
         </div>
-        <div className={`absolute top-2 left-4 z-20 font-futura-bold text-lg tracking-widest opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
+        <div className={`absolute top-2 left-4 z-20 font-poppins font-black tracking-tight text-lg opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
 
         <div className="flex flex-col md:px-8 py-10 w-full">
           <div className={`${seqBg} border-2 ${seqBorder} rounded-lg p-2 shadow-inner mb-4 transition-colors duration-300`}>
             <div className={`flex items-center justify-between mb-2 px-2 border-b ${darkMode ? 'border-gray-600' : 'border-gray-300'} pb-2`}>
-              <h2 className={`text-xs font-black ${darkMode ? 'text-gray-400' : 'text-gray-700'} tracking-wider`}>PERCUSSION SYNTHESIZER</h2>
+              <h2 className={`text-xs font-black ${darkMode ? 'text-gray-400' : 'text-gray-700'} tracking-wider`}>&nbsp;</h2>
             </div>
             <div className="flex flex-row w-full gap-2 items-stretch">
               <div className={`flex flex-col justify-between items-center pr-2 border-r-2 ${darkMode ? 'border-gray-600' : 'border-gray-300'} min-w-[50px]`}>
