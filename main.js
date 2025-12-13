@@ -387,7 +387,12 @@ const App = () => {
 
       if (ctx.state === 'suspended') await ctx.resume();
 
-      Object.keys(params).forEach(key => node.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: params[key] } }));
+        Object.keys(params).forEach(key => {
+          node.port.postMessage({
+            type: 'PARAM_UPDATE',
+            payload: { id: key, value: params[key] },
+          });
+        });
       node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
     } catch (err) {
       console.error(err);
