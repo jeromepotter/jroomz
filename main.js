@@ -541,7 +541,7 @@ const App = () => {
             </div>
             <div className="flex flex-row w-full gap-2 items-stretch">
               <div className={`flex flex-col justify-between items-center pr-2 border-r-2 ${darkMode ? 'border-gray-600' : 'border-gray-300'} min-w-[50px]`}>
-                <Knob label="TEMPO" value={params.tempo} onChange={(v) => updateParam('tempo', v)} min={40} max={300} size="lg" darkMode={darkMode} />
+                <Knob label="TEMPO" value={params.tempo} onChange={(v) => updateParam('tempo', Math.round(v))} min={40} max={300} size="lg" darkMode={darkMode} />
                 <div className="flex flex-col gap-1 mt-2 w-full">
                   <button onClick={toggleRun} className={`h-6 w-full rounded border border-gray-600 text-[8px] font-bold shadow-sm ${params.run ? 'bg-red-600 text-white' : (darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-black')}`}>{params.run ? 'STOP' : 'RUN'}</button>
                   <div className="flex gap-1 w-full">
