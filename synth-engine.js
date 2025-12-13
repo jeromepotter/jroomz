@@ -304,15 +304,7 @@ class ZitaRev {
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
           this.velSmoother = new SmoothValue(0.5);
-
-          const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
-          const stereospread = 23;
-          this.combsL = tunings.map(t => new LowpassCombFilter(t));
-          this.combsR = tunings.map(t => new LowpassCombFilter(t + stereospread));
-
-          this.allpassesL = [new AllpassFilter(556), new AllpassFilter(441), new AllpassFilter(341), new AllpassFilter(225)];
-          this.allpassesR = [new AllpassFilter(556+stereospread), new AllpassFilter(441+stereospread), new AllpassFilter(341+stereospread), new AllpassFilter(225+stereospread)];
-          this.verbFb = 0.7;
+          this.zita = new ZitaRev(this.fs);
 
           this.sequencer = {
               currentStep: 0,
@@ -349,11 +341,14 @@ class ZitaRev {
 
                   this.params[payload.id] = payload.value;
 
-                  if (payload.id === 'reverbDecay') {
-                      this.verbFb = 0.7 + (payload.value * 0.28);
-                      this.combsL.forEach(c => c.setFeedback(this.verbFb));
-                      this.combsR.forEach(c => c.setFeedback(this.verbFb));
-                  }
+                 if (payload.id === 'reverbDecay') {
+        // Map 0.0-1.0 to 0.5s-8.0s decay time
+        const len = 0.5 + (payload.value * 7.5);
+        this.zita.setParam('midRt60', len);
+        this.zita.setParam('lowRt60', len * 0.85);
+        // We fix High Freq Damping to 6kHz for a natural shimmer
+        this.zita.setParam('hfDamp', 6000); 
+    }
                   if (payload.id === 'delayRate') {
                       this.delayTimeSmoother.set(payload.value);
                   }
@@ -548,46 +543,6 @@ class ZitaRev {
           return [inL + (outL - inL) * mix, inR + (outR - inR) * mix];
       }
 
-      processReverb(inL, inR) {
-          const mix = (inL + inR) * 0.5 * 0.015;
-          let oL = 0, oR = 0;
-
-          for (let i = 0; i < 8; i++) {
-              const c = this.combsL[i];
-              const out = c.buffer[c.index];
-              c.store = (out * 0.8) + (c.store * 0.2);
-              c.buffer[c.index] = mix + (c.store * this.verbFb);
-              c.index = (c.index + 1) % c.bufferSize;
-              oL += out;
-          }
-          for (let i = 0; i < 8; i++) {
-              const c = this.combsR[i];
-              const out = c.buffer[c.index];
-              c.store = (out * 0.8) + (c.store * 0.2);
-              c.buffer[c.index] = mix + (c.store * this.verbFb);
-              c.index = (c.index + 1) % c.bufferSize;
-              oR += out;
-          }
-
-          for (let i = 0; i < 4; i++) {
-              const ap = this.allpassesL[i];
-              const bufOut = ap.buffer[ap.index];
-              const out = -oL + bufOut;
-              ap.buffer[ap.index] = oL + (bufOut * 0.5);
-              ap.index = (ap.index + 1) % ap.bufferSize;
-              oL = out;
-          }
-          for (let i = 0; i < 4; i++) {
-              const ap = this.allpassesR[i];
-              const bufOut = ap.buffer[ap.index];
-              const out = -oR + bufOut;
-              ap.buffer[ap.index] = oR + (bufOut * 0.5);
-              ap.index = (ap.index + 1) % ap.bufferSize;
-              oR = out;
-          }
-          return [oL, oR];
-      }
-
       process(inputs, outputs) {
           const output = outputs[0];
           const channelL = output[0];
@@ -679,11 +634,11 @@ class ZitaRev {
 
               const [bentL, bentR] = this.processDataBender(postVca, postVca);
               const [delL, delR] = this.processDelay(bentL, bentR);
-              const [revL, revR] = this.processReverb(delL, delR);
+              const [revL, revR] = this.zita.processSample(delL, delR);
               const rWet = this.params.reverbMix;
 
-              let mixL = delL + (revL * rWet * 1.5);
-              let mixR = delR + (revR * rWet * 1.5);
+              let mixL = delL + (revL * rWet); 
+              let mixR = delR + (revR * rWet);
 
               let subL = this.mfL_hp_sub.process(mixL, hpFreq, this.fs);
               let subR = this.mfR_hp_sub.process(mixR, hpFreq, this.fs);
