@@ -379,23 +379,25 @@ const App = () => {
     try {
       const node = await window.createJroomzWorkletNode(ctx);
       node.connect(ctx.destination);
-      node.port.onmessage = (e) => { if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step); };
-
-      setAudioCtx(ctx);
-      setWorkletNode(node);
-      setIsStarted(true);
+      node.port.onmessage = (e) => {
+        if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step);
+      };
 
       if (ctx.state === 'suspended') {
         await ctx.resume();
       }
 
-      Object.keys(params).forEach((key) => {
+      for (const key of Object.keys(params)) {
         node.port.postMessage({
           type: 'PARAM_UPDATE',
           payload: { id: key, value: params[key] },
         });
-      });
+      }
       node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
+
+      setAudioCtx(ctx);
+      setWorkletNode(node);
+      setIsStarted(true);
     } catch (err) {
       console.error(err);
     }
@@ -440,7 +442,7 @@ const App = () => {
   };
 
   const handleFileInput = (e) => {
-    const file = e.target.files?.[0];
+    const file = (e.target.files && e.target.files[0]) || null;
     if (!file) return;
 
     const reader = new FileReader();
