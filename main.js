@@ -84,6 +84,7 @@ const HelpModal = ({ isOpen, onClose }) => {
           <section>
             <h3 className="text-xl font-bold mb-3 border-b border-gray-700 pb-2 uppercase">5. Global Filter & Effects</h3>
             <ul className="list-disc list-inside text-gray-300 space-y-1">
+              <li><strong>BENDER</strong> (B MIX / B CRSH / B DROP / B DRIVE / B RATE): Circuit-bent stage that crushes bits, downsamples, drops packets, and overdrives before feeding the delay.</li>
               <li><strong>HPF</strong>: Rolls off low end. Use lightly to tame sub-rumble.</li>
               <li><strong>LPF</strong>: Smooths the final brightness after everything else.</li>
               <li><strong>GLB RES</strong>: Adds a gentle bump at the LPF cutoff. Subtle settings thicken the mix; higher settings give a rounded peak without harshness.</li>
@@ -629,6 +630,14 @@ const App = () => {
 
           <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-end gap-2`}>
             <div className={`w-full md:w-auto flex items-center justify-between md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
+              <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
+                <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">BEND</div>
+                <Knob label="B MIX" value={params.dataBenderMix} onChange={(v) => updateParam('dataBenderMix', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="B CRSH" value={params.dataBenderCrush} onChange={(v) => updateParam('dataBenderCrush', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="B DROP" value={params.dataBenderDrop} onChange={(v) => updateParam('dataBenderDrop', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="B DRIVE" value={params.dataBenderDrive} onChange={(v) => updateParam('dataBenderDrive', v)} size="sm" color="white" darkMode={darkMode} />
+                <Knob label="B RATE" value={params.dataBenderRate} onChange={(v) => updateParam('dataBenderRate', v)} size="sm" color="white" darkMode={darkMode} />
+              </div>
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">DELAY</div>
                 <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />

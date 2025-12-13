@@ -119,7 +119,7 @@
               volume: 0.8,
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
-              dataBenderMix: 0.2,
+              dataBenderMix: 0.2, dataBenderCrush: 0.6, dataBenderDrop: 0.25, dataBenderDrive: 0.5, dataBenderRate: 0.35,
               delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
               masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
           };
@@ -298,11 +298,15 @@
           const mix = Math.max(0, Math.min(1, this.params.dataBenderMix ?? 0));
           if (mix <= 0.0001) return [inL, inR];
 
-          const intensity = mix;
-          const bitDepth = Math.max(4, Math.floor(16 - (intensity * 10)));
+          const crushAmt = Math.max(0, Math.min(1, this.params.dataBenderCrush ?? 0));
+          const dropAmt = Math.max(0, Math.min(1, this.params.dataBenderDrop ?? 0));
+          const driveAmt = Math.max(0, Math.min(1, this.params.dataBenderDrive ?? 0));
+          const rateAmt = Math.max(0, Math.min(1, this.params.dataBenderRate ?? 0));
+
+          const bitDepth = Math.max(3, Math.floor(16 - (crushAmt * 12)));
           const steps = Math.pow(2, bitDepth) - 1;
 
-          const hold = 1 + Math.floor(intensity * 24);
+          const hold = 1 + Math.floor(1 + rateAmt * 96);
           if (this.dataBenderState.sampleCounter-- <= 0) {
               this.dataBenderState.sampleCounter = hold;
               this.dataBenderState.lastL = inL;
@@ -320,10 +324,10 @@
           let outL = crush(heldL);
           let outR = crush(heldR);
 
-          const dropoutChance = intensity * 0.02;
+          const dropoutChance = dropAmt * 0.12 + (Math.random() * dropAmt * 0.02);
           if (Math.random() < dropoutChance) { outL = 0; outR = 0; }
 
-          const drive = 1 + intensity * 4;
+          const drive = 1 + driveAmt * 6;
           outL = Math.tanh(outL * drive);
           outR = Math.tanh(outR * drive);
 
