@@ -63,7 +63,221 @@
           this.index = 0;
       }
   }
+class ZitaRev {
+      constructor(sampleRate) {
+          this.fs = sampleRate;
+          this.active = false; // CPU saver: don't process if decay is 0
+          
+          // --- PARAMETERS ---
+          this.params = {
+              preDel: 20.0,
+              lfFc: 200.0,
+              lowRt60: 2.0,
+              midRt60: 2.0,
+              hfDamp: 6000.0
+          };
 
+          // --- CONSTANTS & STATE ---
+          const SR = this.fs;
+          this.maxDelay = 32768; // Power of 2
+          this.mask = this.maxDelay - 1;
+          
+          this.fConst0 = Math.min(192000.0, Math.max(1.0, SR));
+          this.fConst1 = 6.283185307179586 / this.fConst0;
+          this.fConst2 = Math.floor(0.125 * this.fConst0 + 0.5);
+          this.fConst4 = 3.141592653589793 / this.fConst0;
+          this.fConst7 = 0.001 * this.fConst0;
+
+          // Delay line setup
+          this.delayConsts = [
+              { main: Math.floor(0.219991 * this.fConst0 + 0.5), apf: Math.floor(0.019123 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.192303 * this.fConst0 + 0.5), apf: Math.floor(0.029291 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.174713 * this.fConst0 + 0.5), apf: Math.floor(0.022904 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.256891 * this.fConst0 + 0.5), apf: Math.floor(0.027333 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.127837 * this.fConst0 + 0.5), apf: Math.floor(0.031604 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.210389 * this.fConst0 + 0.5), apf: Math.floor(0.024421 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.153129 * this.fConst0 + 0.5), apf: Math.floor(0.020346 * this.fConst0 + 0.5) },
+              { main: this.fConst2, apf: Math.floor(0.013458 * this.fConst0 + 0.5) } // Filter 7 special case
+          ];
+
+          // Buffers
+          this.delays = new Array(8).fill(0).map(() => ({
+              main: new Float32Array(this.maxDelay),
+              apf: new Float32Array(4096)
+          }));
+          
+          this.states = new Array(8).fill(0).map(() => ({
+              damp: 0, lp: 0, comb: 0, rec: [0,0] // History for feedback
+          }));
+
+          // Misc
+          this.inputL = new Float32Array(this.maxDelay);
+          this.inputR = new Float32Array(this.maxDelay);
+          this.iota = 0;
+          this.lfFilter = 0;
+          this.dirty = true; // Force calc on first run
+          this.coeffs = [];
+          this.lfCoeff = {};
+          this.preDelaySamps = 0;
+
+          // Helper constants
+          this.dwConst = 0.353553385; // 1/sqrt(8)
+          this.apConst = 0.6;
+      }
+
+      setParam(key, val) {
+          if (this.params[key] !== val) {
+              this.params[key] = val;
+              this.dirty = true;
+          }
+      }
+
+      update() {
+          if (!this.dirty) return;
+          const p = this.params;
+          
+          // Pre-calc coefficients (Run only when knobs move)
+          const fSlow0 = Math.cos(this.fConst1 * p.hfDamp);
+          const lfTan = 1.0 / Math.tan(this.fConst4 * p.lfFc);
+          
+          this.lfCoeff = {
+              scale: 1.0 / (lfTan + 1.0),
+              fb: (1.0 - lfTan) / (lfTan + 1.0)
+          };
+
+          this.preDelaySamps = Math.floor(this.fConst7 * p.preDel);
+
+          this.coeffs = this.delayConsts.map(dc => {
+              const decayConst = (0.0 - (6.907755 * dc.main)) / this.fConst0;
+              const fSlow2 = Math.exp(decayConst / p.midRt60);
+              const fSlow3 = fSlow2 * fSlow2;
+              const fSlow4 = 1.0 - (fSlow0 * fSlow3);
+              const fSlow5 = 1.0 - fSlow3;
+              const fSlow6 = fSlow4 / fSlow5;
+              const fSlow7 = Math.sqrt(Math.max(0, (fSlow4*fSlow4)/(fSlow5*fSlow5) - 1.0));
+              const b0 = fSlow6 - fSlow7;
+              
+              return {
+                  b0: b0,
+                  a1: fSlow2 * (fSlow7 + (1.0 - fSlow6)),
+                  lowMult: (Math.exp(decayConst / p.lowRt60) / fSlow2) - 1.0
+              };
+          });
+          
+          this.dirty = false;
+      }
+
+      processSample(inL, inR) {
+          // Optimization: If reverb is barely active, just return silence 
+          // (Can add a threshold here if needed)
+          
+          this.update(); // Check dirty flag
+          
+          const idx = this.iota & this.mask;
+          this.inputL[idx] = inL;
+          this.inputR[idx] = inR;
+
+          // Read Pre-delay
+          const rIdx = (this.iota - this.preDelaySamps) & this.mask;
+          const dL = this.inputL[rIdx];
+          const dR = this.inputR[rIdx];
+
+          const earlyL = dL * 0.3;
+          const earlyR = dR * 0.3;
+          
+          const combOuts = new Float32Array(8);
+
+          // Run 8 Comb Filters
+          for(let i=0; i<8; i++) {
+             const s = this.states[i];
+             const c = this.coeffs[i];
+             const d = this.delays[i];
+             const dc = this.delayConsts[i];
+
+             // Low Shelf (Rt60 control)
+             const recSum = s.rec[0] + s.rec[1];
+             s.lp = (this.lfCoeff.scale * recSum) + (this.lfCoeff.fb * s.lp);
+             
+             // High Damping
+             s.damp = (c.b0 * s.damp) + (c.a1 * (s.rec[0] + (c.lowMult * s.lp)));
+
+             // Main Delay write
+             const mainOut = (this.dwConst * s.damp); // + denormal fix if needed
+             const mainReadIdx = (this.iota - (dc.main - dc.apf)) & this.mask; // Approximate logic for delay taps
+             
+             // Just using main buffer as ring buffer
+             // Note: The original code uses multiple tap points. 
+             // Simplified here: Write to head.
+             
+             // The original Zita delay logic is complex with specific read pointers.
+             // To keep this snippet small, we assume standard FDN structure:
+             // Write Head -> Read Head (Delay Time)
+             
+             const writePos = idx;
+             const readPos = (this.iota - dc.main) & this.mask;
+             
+             d.main[writePos] = mainOut;
+             const mainRead = d.main[readPos];
+
+             // Embedded Allpass
+             const apIn = mainRead - (this.apConst * s.comb); // + inject
+             
+             // Special Injection logic from original code:
+             // Filters 0,3,5,7 get earlyL, others get earlyR
+             let inject = 0;
+             if (i===0 || i===5 || i===7) inject = -earlyL;
+             else if (i===3) inject = earlyL;
+             else if (i===1 || i===4 || i===6) inject = -earlyR;
+             else inject = earlyR;
+
+             const apInFinal = apIn + inject;
+             
+             const apWrite = this.iota & 4095;
+             const apRead = (this.iota - dc.apf) & 4095;
+             
+             d.apf[apWrite] = apInFinal;
+             const apOut = d.apf[apRead];
+             
+             s.comb = apOut + (this.apConst * apInFinal);
+             combOuts[i] = s.comb;
+          }
+
+          // Hadamard Matrix Mixing (The "Magic" Sauce)
+          // This mixes the 8 comb outputs to create the feedback for the next frame
+          
+          // Using a fast in-place Hadamard-like shuffle
+          // 0+1, 2+3, 4+5, 6+7
+          const t0 = combOuts[0]+combOuts[1]; const t1 = combOuts[0]-combOuts[1];
+          const t2 = combOuts[2]+combOuts[3]; const t3 = combOuts[2]-combOuts[3];
+          const t4 = combOuts[4]+combOuts[5]; const t5 = combOuts[4]-combOuts[5];
+          const t6 = combOuts[6]+combOuts[7]; const t7 = combOuts[6]-combOuts[7];
+          
+          // Stage 2
+          const m0 = t0+t2; const m1 = t0-t2;
+          const m2 = t1+t3; const m3 = t1-t3;
+          const m4 = t4+t6; const m5 = t4-t6;
+          const m6 = t5+t7; const m7 = t5-t7;
+
+          // Feedback inputs for next cycle
+          this.states[0].rec[1] = this.states[0].rec[0]; this.states[0].rec[0] = m0 + m4;
+          this.states[1].rec[1] = this.states[1].rec[0]; this.states[1].rec[0] = m1 + m5; // Check Zita permutes
+          // (Zita actually does a specific permutation here, but a full Hadamard is usually fine for reverb)
+          this.states[2].rec[1] = this.states[2].rec[0]; this.states[2].rec[0] = m2 + m6;
+          this.states[3].rec[1] = this.states[3].rec[0]; this.states[3].rec[0] = m3 + m7;
+          this.states[4].rec[1] = this.states[4].rec[0]; this.states[4].rec[0] = m0 - m4;
+          this.states[5].rec[1] = this.states[5].rec[0]; this.states[5].rec[0] = m1 - m5;
+          this.states[6].rec[1] = this.states[6].rec[0]; this.states[6].rec[0] = m2 - m6;
+          this.states[7].rec[1] = this.states[7].rec[0]; this.states[7].rec[0] = m3 - m7;
+
+          // Output Mix
+          const outL = (this.states[1].rec[0] + this.states[2].rec[0]) * 0.37;
+          const outR = (this.states[1].rec[0] - this.states[2].rec[0]) * 0.37;
+
+          this.iota++;
+          
+          return [outL, outR];
+      }
+  }
   class JroomzProcessor extends AudioWorkletProcessor {
       constructor() {
           super();
