@@ -89,7 +89,7 @@
           this.delayR = new DelayLine(maxDelaySamples);
           this.delayTimeSmoother = new SmoothValue(0.3);
           this.pitchSmoother = new SmoothValue(0.5);
-          this.velSmoother = new SmoothValue(0.5); // Smoother for velocity
+          this.velSmoother = new SmoothValue(0.5);
 
           const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
           const stereospread = 23;
@@ -113,7 +113,6 @@
               vcoDecay: 0.5, seqPitchMod: 1, noiseLevel: 0,
               cutoff: 0.5, resonance: 0.2, vcfEgAmt: 0.5, vcfDecay: 0.5, noiseVcfMod: 0,
               
-              // CHANGED: Replaced vcaEgMode with vcaAttack
               vcaAttack: 0.003, 
               vcaDecay: 0.0, 
               
@@ -186,7 +185,6 @@
       }
 
       processEnvelopes() {
-          // CHANGED: Use knob value. Min 0.001 to avoid Infinity/div-by-zero or bad clicks
           const attackTime = Math.max(0.001, this.params.vcaAttack);
           
           const attackInc = 1.0 / (attackTime * this.fs);
@@ -195,7 +193,9 @@
                   env.val += attackInc;
                   if (env.val >= 1.0) { env.val = 1.0; env.phase = 2; }
               } else if (env.phase === 2) {
-                  const time = 0.01 + (decayParam * 1.5);
+                  // CHANGED: Use cubic curve (decayParam^3) for finer control at low values
+                  const curvedDecay = Math.pow(decayParam, 3);
+                  const time = 0.01 + (curvedDecay * 1.5);
                   env.val *= Math.exp(-1.0 / (time * this.fs));
               }
           };
@@ -360,8 +360,6 @@
               if (trigger) {
                   const step = this.sequencer.steps[this.sequencer.currentStep];
                   
-                  // Ring out logic:
-                  // If velocity is near zero, do NOT retrigger. This lets the tail ring out.
                   if (step.velocity > 0.05) {
                       this.sequencer.lastTrigVel = step.velocity;
                       this.triggerEnvelopes();
@@ -370,7 +368,6 @@
 
               this.processEnvelopes();
 
-              // Velocity Smoothing
               this.velSmoother.set(this.sequencer.lastTrigVel);
               const vel = this.velSmoother.process(0.005);
 
