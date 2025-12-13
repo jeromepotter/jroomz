@@ -113,15 +113,18 @@
               vcoDecay: 0.5, seqPitchMod: 1, noiseLevel: 0,
               cutoff: 0.5, resonance: 0.2, vcfEgAmt: 0.5, vcfDecay: 0.5, noiseVcfMod: 0,
               
-              vcaAttack: 0.003, 
-              vcaDecay: 0.0, 
-              
+              vcaAttack: 0.003,
+              vcaDecay: 0.0,
+
               volume: 0.8,
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
+              dataBenderMix: 0.2,
               delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
               masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
           };
+
+          this.dataBenderState = { sampleCounter: 0, sampleHold: 1, lastL: 0, lastR: 0 };
 
           this.port.onmessage = (e) => {
               const { type, payload } = e.data;
@@ -291,6 +294,42 @@
           return [inL + dL * wet, inR + dR * wet];
       }
 
+      processDataBender(inL, inR) {
+          const mix = Math.max(0, Math.min(1, this.params.dataBenderMix ?? 0));
+          if (mix <= 0.0001) return [inL, inR];
+
+          const intensity = mix;
+          const bitDepth = Math.max(4, Math.floor(16 - (intensity * 10)));
+          const steps = Math.pow(2, bitDepth) - 1;
+
+          const hold = 1 + Math.floor(intensity * 24);
+          if (this.dataBenderState.sampleCounter-- <= 0) {
+              this.dataBenderState.sampleCounter = hold;
+              this.dataBenderState.lastL = inL;
+              this.dataBenderState.lastR = inR;
+          }
+
+          const heldL = this.dataBenderState.lastL;
+          const heldR = this.dataBenderState.lastR;
+
+          const crush = (v) => {
+              const clipped = Math.max(-1, Math.min(1, v));
+              return Math.round(((clipped * 0.5) + 0.5) * steps) / steps * 2 - 1;
+          };
+
+          let outL = crush(heldL);
+          let outR = crush(heldR);
+
+          const dropoutChance = intensity * 0.02;
+          if (Math.random() < dropoutChance) { outL = 0; outR = 0; }
+
+          const drive = 1 + intensity * 4;
+          outL = Math.tanh(outL * drive);
+          outR = Math.tanh(outR * drive);
+
+          return [inL + (outL - inL) * mix, inR + (outR - inR) * mix];
+      }
+
       processReverb(inL, inR) {
           const mix = (inL + inR) * 0.5 * 0.015;
           let oL = 0, oR = 0;
@@ -420,7 +459,8 @@
               let filtered = this.runMoogFilter(mix, finalCutoffFreq, this.params.resonance);
               const drySignal = Math.tanh(filtered * this.vcaEg.val * vel * this.params.volume);
 
-              const [delL, delR] = this.processDelay(drySignal, drySignal);
+              const [bentL, bentR] = this.processDataBender(drySignal, drySignal);
+              const [delL, delR] = this.processDelay(bentL, bentR);
               const [revL, revR] = this.processReverb(delL, delR);
               const rWet = this.params.reverbMix;
 

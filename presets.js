@@ -9,12 +9,13 @@
     cutoff: 0.45, resonance: 0.2, vcfEgAmt: 0.7, vcfDecay: 0.35, noiseVcfMod: 0.2,
     
     // CHANGED: vcaAttack replaces vcaEgMode
-    vcaAttack: 0.003, 
-    vcaDecay: 0.0, 
-    
+    vcaAttack: 0.003,
+    vcaDecay: 0.0,
+
     volume: 0.8,
     tempo: 128, run: 0,
     reverbDecay: 0.7, reverbMix: 0.0,
+    dataBenderMix: 0.2,
     delayRate: 0.25, delayFdbk: 0.4, delayWidth: 0.5, delayWet: 0.0,
     masterHP: 0.0, masterLP: 1.0, masterRes: 0.2
   };
