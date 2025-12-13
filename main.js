@@ -699,9 +699,9 @@ const App = () => {
               onClick={toggleRecording}
               disabled={!recorderReady}
               title={recorderReady ? (isRecording ? 'Stop recording' : 'Start recording') : 'Initializing audio routing'}
-              className={`w-6 h-6 flex items-center justify-center rounded-full border ${recorderReady ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'} ${darkMode ? 'border-gray-500 bg-gray-800 hover:border-red-500' : 'border-gray-500 bg-gray-200 hover:border-red-500'}`}
+              className={`w-6 h-6 flex items-center justify-center rounded border ${recorderReady ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'} ${darkMode ? 'border-gray-500 bg-gray-800 hover:border-red-500' : 'border-gray-500 bg-gray-200 hover:border-red-500'}`}
             >
-              <span className={`w-2.5 h-2.5 rounded-full ${isRecording ? 'bg-white border border-red-700' : 'bg-red-600'}`}></span>
+              <span className={`w-3 h-3 rounded-full ${isRecording ? 'bg-white border border-red-700' : 'bg-red-600'}`}></span>
             </button>
             <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileInput} />
           </div>
