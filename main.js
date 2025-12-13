@@ -112,14 +112,46 @@ const delayDivisions = [
   { label: "1", value: 1 },
 ];
 
+const delayMin = delayDivisions[0].value;
+const delayMax = delayDivisions[delayDivisions.length - 1].value;
+
+const clampDelay = (value) => Math.min(delayMax, Math.max(delayMin, value ?? delayMin));
+
 const getNearestDelayDivision = (val) => {
-  let closest = delayDivisions[0].value;
-  let minDiff = Math.abs(val - closest);
-  delayDivisions.forEach(d => {
+  let closest = delayDivisions[0];
+  let minDiff = Math.abs(val - closest.value);
+  delayDivisions.forEach((d) => {
     const diff = Math.abs(val - d.value);
-    if (diff < minDiff) { minDiff = diff; closest = d.value; }
+    if (diff < minDiff) { minDiff = diff; closest = d; }
   });
   return closest;
+};
+
+const delayValueToKnobPos = (value) => {
+  const v = clampDelay(value);
+  for (let i = 0; i < delayDivisions.length - 1; i++) {
+    const current = delayDivisions[i].value;
+    const next = delayDivisions[i + 1].value;
+    if (v <= next) {
+      const t = (v - current) / (next - current);
+      return (i + t) / (delayDivisions.length - 1);
+    }
+  }
+  return 1;
+};
+
+const knobPosToDelayValue = (pos) => {
+  const clamped = Math.min(1, Math.max(0, pos));
+  const scaled = clamped * (delayDivisions.length - 1);
+  const lowerIndex = Math.floor(scaled);
+  const upperIndex = Math.ceil(scaled);
+
+  if (lowerIndex === upperIndex) return delayDivisions[lowerIndex].value;
+
+  const t = scaled - lowerIndex;
+  const lowerVal = delayDivisions[lowerIndex].value;
+  const upperVal = delayDivisions[upperIndex].value;
+  return lowerVal + (upperVal - lowerVal) * t;
 };
 
 const Knob = ({ label, value, onChange, min = 0, max = 1, bipolar = false, size = "md", color = "black", darkMode, displayFormatter }) => {
@@ -287,7 +319,7 @@ const App = () => {
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
   const fileInputRef = useRef(null);
 
-  const initialParams = { ...window.PRESETS[0].params, delayRate: getNearestDelayDivision(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
+  const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
@@ -296,7 +328,7 @@ const App = () => {
     const p = patch;
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
-    fullParams.delayRate = getNearestDelayDivision(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
+    fullParams.delayRate = clampDelay(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
 
     // MIGRATION: If incoming patch lacks vcaAttack but has old mode, convert it.
     if (fullParams.vcaAttack === undefined) {
@@ -361,9 +393,14 @@ const App = () => {
   };
 
   const updateParam = (id, value) => {
-    const newValue = id === 'delayRate' ? getNearestDelayDivision(value) : value;
+    const newValue = id === 'delayRate' ? clampDelay(value) : value;
     setParams(prev => ({ ...prev, [id]: newValue }));
     if (workletNode) workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id, value: newValue } });
+  };
+
+  const handleDelayRateChange = (knobPos) => {
+    const actualValue = knobPosToDelayValue(knobPos);
+    updateParam('delayRate', actualValue);
   };
 
   const updateStep = (index, field, value) => {
@@ -597,14 +634,14 @@ const App = () => {
                 <Knob label="D WET" value={params.delayWet} onChange={(v) => updateParam('delayWet', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob
                   label="D RATE"
-                  value={params.delayRate}
-                  onChange={(v) => updateParam('delayRate', v)}
-                  min={delayDivisions[0].value}
-                  max={delayDivisions[delayDivisions.length - 1].value}
+                  value={delayValueToKnobPos(params.delayRate)}
+                  onChange={handleDelayRateChange}
+                  min={0}
+                  max={1}
                   size="sm"
                   color="white"
                   darkMode={darkMode}
-                  displayFormatter={(v) => `${delayDivisions.find((d) => d.value === getNearestDelayDivision(v))?.label || '1/4'}`}
+                  displayFormatter={(v) => `${getNearestDelayDivision(knobPosToDelayValue(v)).label}`}
                 />
                 <Knob label="D FDBK" value={params.delayFdbk} onChange={(v) => updateParam('delayFdbk', v)} size="sm" color="white" darkMode={darkMode} />
                 <Knob label="D WIDTH" value={params.delayWidth} onChange={(v) => updateParam('delayWidth', v)} size="sm" color="white" darkMode={darkMode} />
