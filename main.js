@@ -402,7 +402,9 @@ const App = () => {
       node.connect(ctx.destination);
       node.port.onmessage = (e) => {
         if (e.data.type === 'STEP_CHANGE') {
-          scheduledSteps.current.push({ step: e.data.step, time: e.data.time || ctx.currentTime });
+          const now = ctx.getOutputTimestamp?.().contextTime ?? ctx.currentTime;
+          const targetTime = Number.isFinite(e.data.time) ? e.data.time : now;
+          scheduledSteps.current.push({ step: e.data.step, time: targetTime });
           scheduledSteps.current.sort((a, b) => a.time - b.time);
         }
       };
@@ -423,7 +425,8 @@ const App = () => {
   useEffect(() => {
     if (!audioCtx) return;
     const tick = () => {
-      const now = audioCtx.currentTime;
+      const ts = audioCtx.getOutputTimestamp ? audioCtx.getOutputTimestamp() : null;
+      const now = ts && Number.isFinite(ts.contextTime) ? ts.contextTime : audioCtx.currentTime;
       while (scheduledSteps.current.length && scheduledSteps.current[0].time <= now) {
         const evt = scheduledSteps.current.shift();
         setLedState(evt.step);
