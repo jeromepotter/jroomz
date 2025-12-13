@@ -641,14 +641,25 @@
           return [inL + dL * wet, inR + dR * wet];
       }
 
-      processDataBender(inL, inR) {
-          const mix = Math.max(0, Math.min(1, this.params.dataBenderMix ?? 0));
-          if (mix <= 0.0001) return [inL, inR];
+        processDataBender(inL, inR) {
+            const mixSrc = (this.params.dataBenderMix !== undefined && this.params.dataBenderMix !== null)
+                ? this.params.dataBenderMix : 0;
+            const mix = Math.max(0, Math.min(1, mixSrc));
+            if (mix <= 0.0001) return [inL, inR];
 
-          const crushAmt = Math.max(0, Math.min(1, this.params.dataBenderCrush ?? 0));
-          const dropAmt = Math.max(0, Math.min(1, this.params.dataBenderDrop ?? 0));
-          const driveAmt = Math.max(0, Math.min(1, this.params.dataBenderDrive ?? 0));
-          const rateAmt = Math.max(0, Math.min(1, this.params.dataBenderRate ?? 0));
+            const crushSrc = (this.params.dataBenderCrush !== undefined && this.params.dataBenderCrush !== null)
+                ? this.params.dataBenderCrush : 0;
+            const dropSrc = (this.params.dataBenderDrop !== undefined && this.params.dataBenderDrop !== null)
+                ? this.params.dataBenderDrop : 0;
+            const driveSrc = (this.params.dataBenderDrive !== undefined && this.params.dataBenderDrive !== null)
+                ? this.params.dataBenderDrive : 0;
+            const rateSrc = (this.params.dataBenderRate !== undefined && this.params.dataBenderRate !== null)
+                ? this.params.dataBenderRate : 0;
+
+            const crushAmt = Math.max(0, Math.min(1, crushSrc));
+            const dropAmt = Math.max(0, Math.min(1, dropSrc));
+            const driveAmt = Math.max(0, Math.min(1, driveSrc));
+            const rateAmt = Math.max(0, Math.min(1, rateSrc));
 
           const bitDepth = Math.max(3, Math.floor(16 - (crushAmt * 12)));
           const steps = Math.pow(2, bitDepth) - 1;
