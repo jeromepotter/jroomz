@@ -117,7 +117,10 @@ const delayDivisions = [
 const delayMin = delayDivisions[0].value;
 const delayMax = delayDivisions[delayDivisions.length - 1].value;
 
-const clampDelay = (value) => Math.min(delayMax, Math.max(delayMin, value ?? delayMin));
+const clampDelay = (value) => {
+  const fallback = value !== undefined && value !== null ? value : delayMin;
+  return Math.min(delayMax, Math.max(delayMin, fallback));
+};
 
 const getNearestDelayDivision = (val) => {
   let closest = delayDivisions[0];
@@ -321,7 +324,10 @@ const App = () => {
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
   const fileInputRef = useRef(null);
 
-  const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
+  const initialDelayRate = (window.PRESETS[0].params.delayRate !== undefined && window.PRESETS[0].params.delayRate !== null)
+    ? window.PRESETS[0].params.delayRate
+    : window.DEFAULT_PARAMS.delayRate;
+  const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(initialDelayRate) };
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
@@ -330,7 +336,10 @@ const App = () => {
     const p = patch;
     const currentRun = params.run;
     const fullParams = { ...window.DEFAULT_PARAMS, ...p.params, run: currentRun };
-    fullParams.delayRate = clampDelay(fullParams.delayRate ?? window.DEFAULT_PARAMS.delayRate);
+    const incomingDelay = (fullParams.delayRate !== undefined && fullParams.delayRate !== null)
+      ? fullParams.delayRate
+      : window.DEFAULT_PARAMS.delayRate;
+    fullParams.delayRate = clampDelay(incomingDelay);
 
     // MIGRATION: If incoming patch lacks vcaAttack but has old mode, convert it.
     if (fullParams.vcaAttack === undefined) {
@@ -342,10 +351,15 @@ const App = () => {
     }
 
     const incomingSteps = Array.isArray(p.steps) ? p.steps : window.DEFAULT_STEPS;
-    const normalizedSteps = incomingSteps.map((s, idx) => ({
-      pitch: typeof s.pitch === 'number' ? s.pitch : (window.DEFAULT_STEPS[idx]?.pitch ?? 0.5),
-      velocity: typeof s.velocity === 'number' ? s.velocity : (window.DEFAULT_STEPS[idx]?.velocity ?? 0.5),
-    }));
+    const normalizedSteps = incomingSteps.map((s, idx) => {
+      const defaultStep = window.DEFAULT_STEPS[idx] || {};
+      const defaultPitch = typeof defaultStep.pitch === 'number' ? defaultStep.pitch : 0.5;
+      const defaultVelocity = typeof defaultStep.velocity === 'number' ? defaultStep.velocity : 0.5;
+      return {
+        pitch: typeof s.pitch === 'number' ? s.pitch : defaultPitch,
+        velocity: typeof s.velocity === 'number' ? s.velocity : defaultVelocity,
+      };
+    });
     while (normalizedSteps.length < window.DEFAULT_STEPS.length) {
       const idx = normalizedSteps.length;
       normalizedSteps.push({
@@ -390,7 +404,7 @@ const App = () => {
       for (const key of Object.keys(params)) {
         node.port.postMessage({
           type: 'PARAM_UPDATE',
-          payload: { id: key, value: params[key] },
+          payload: { id: key, value: params[key] }
         });
       }
       node.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps } });
