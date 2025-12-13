@@ -327,6 +327,7 @@ const App = () => {
   const scheduledSteps = useRef([]);
   const rafId = useRef(null);
   const lastLedIndex = useRef(null);
+  const perfOffsetMs = useRef(null);
 
   const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
   const [params, setParams] = useState(initialParams);
@@ -402,10 +403,21 @@ const App = () => {
       node.connect(ctx.destination);
       node.port.onmessage = (e) => {
         if (e.data.type === 'STEP_CHANGE') {
-          const now = ctx.getOutputTimestamp?.().contextTime ?? ctx.currentTime;
-          const targetTime = Number.isFinite(e.data.time) ? e.data.time : now;
-          scheduledSteps.current.push({ step: e.data.step, time: targetTime });
-          scheduledSteps.current.sort((a, b) => a.time - b.time);
+          const ts = ctx.getOutputTimestamp?.();
+          const nowCtx = ts && Number.isFinite(ts.contextTime) ? ts.contextTime : ctx.currentTime;
+          const offsetMs = ts && Number.isFinite(ts.performanceTime) && Number.isFinite(ts.contextTime)
+            ? ts.performanceTime - (ts.contextTime * 1000)
+            : null;
+          if (offsetMs !== null) perfOffsetMs.current = offsetMs;
+
+          const targetCtxTime = Number.isFinite(e.data.time) ? e.data.time : nowCtx;
+          const targetPerfTime = perfOffsetMs.current !== null ? (targetCtxTime * 1000) + perfOffsetMs.current : null;
+
+          scheduledSteps.current.push({ step: e.data.step, ctxTime: targetCtxTime, perfTime: targetPerfTime });
+          scheduledSteps.current.sort((a, b) => {
+            if (a.perfTime !== null && b.perfTime !== null) return a.perfTime - b.perfTime;
+            return a.ctxTime - b.ctxTime;
+          });
         }
       };
 
@@ -426,9 +438,21 @@ const App = () => {
     if (!audioCtx) return;
     const tick = () => {
       const ts = audioCtx.getOutputTimestamp ? audioCtx.getOutputTimestamp() : null;
-      const now = ts && Number.isFinite(ts.contextTime) ? ts.contextTime : audioCtx.currentTime;
-      while (scheduledSteps.current.length && scheduledSteps.current[0].time <= now) {
+      const nowCtx = ts && Number.isFinite(ts.contextTime) ? ts.contextTime : audioCtx.currentTime;
+      const nowPerf = ts && Number.isFinite(ts.performanceTime) ? ts.performanceTime : null;
+      if (ts && Number.isFinite(ts.performanceTime) && Number.isFinite(ts.contextTime)) {
+        perfOffsetMs.current = ts.performanceTime - (ts.contextTime * 1000);
+      }
+
+      while (scheduledSteps.current.length) {
         const evt = scheduledSteps.current.shift();
+        const due = (nowPerf !== null && evt.perfTime !== null)
+          ? evt.perfTime <= nowPerf
+          : evt.ctxTime <= nowCtx;
+        if (!due) {
+          scheduledSteps.current.unshift(evt);
+          break;
+        }
         setLedState(evt.step);
         setCurrentStep(evt.step);
       }
