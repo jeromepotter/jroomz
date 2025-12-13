@@ -116,6 +116,8 @@
               vcaAttack: 0.003,
               vcaDecay: 0.0,
 
+              velModTarget: 0,
+
               volume: 0.8,
               tempo: 120, run: 0,
               reverbDecay: 0.7, reverbMix: 0.0,
@@ -430,6 +432,17 @@
                   seqPitchFactor = Math.pow(2, (smoothPitch - 0.5) * 10);
               }
 
+              const velAccent = Math.max(0, vel - 0.25);
+              const velAccentCurve = velAccent * velAccent;
+              let resonanceParam = this.params.resonance;
+              let fmAmountParam = this.params.fmAmount;
+
+              if (this.params.velModTarget === 1) {
+                  resonanceParam = Math.min(0.99, resonanceParam + velAccentCurve * 0.8);
+              } else if (this.params.velModTarget === 2) {
+                  fmAmountParam = Math.min(1.0, fmAmountParam + velAccentCurve * 1.0);
+              }
+
               let f1 = vco1Base * vco1EgFactor;
               let f2 = vco2Base * vco2EgFactor;
 
@@ -438,7 +451,7 @@
 
               const osc1Out = this.getOscSample(this.vco1, this.params.vco1Wave, f1);
 
-              let f2Mod = osc1Out * this.params.fmAmount * 4000;
+              let f2Mod = osc1Out * fmAmountParam * 4000;
               if (!Number.isFinite(f2Mod)) f2Mod = 0;
               f2 += f2Mod;
 
@@ -460,7 +473,7 @@
 
               const finalCutoffFreq = 20 * Math.pow(20000/20, moddedCutoffParam);
 
-              let filtered = this.runMoogFilter(mix, finalCutoffFreq, this.params.resonance);
+              let filtered = this.runMoogFilter(mix, finalCutoffFreq, resonanceParam);
               const postVca = Math.tanh(filtered * this.vcaEg.val * vel);
 
               const [bentL, bentR] = this.processDataBender(postVca, postVca);

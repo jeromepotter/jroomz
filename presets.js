@@ -7,10 +7,12 @@
     hardSync: 0, fmAmount: 0.2,
     vcoDecay: 0.4, seqPitchMod: 1, noiseLevel: 0.0,
     cutoff: 0.45, resonance: 0.2, vcfEgAmt: 0.7, vcfDecay: 0.35, noiseVcfMod: 0.2,
-    
+
     // CHANGED: vcaAttack replaces vcaEgMode
     vcaAttack: 0.003,
     vcaDecay: 0.0,
+
+    velModTarget: 0,
 
     volume: 0.8,
     tempo: 128, run: 0,
