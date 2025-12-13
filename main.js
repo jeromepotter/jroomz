@@ -258,11 +258,15 @@ const Switch = ({ label, value, onChange, options, darkMode }) => {
   );
 };
 
-const SequencerStep = ({ index, pitch, velocity, onChange, isActive, darkMode }) => {
+const SequencerStep = ({ index, pitch, velocity, onChange, isActive, darkMode, ledRef }) => {
   return (
     <div className={`flex flex-col items-center flex-1 min-w-0 border-r ${darkMode ? 'border-gray-700' : 'border-gray-300'} last:border-0 relative pb-1`}>
       <div className="mb-1 mt-1">
-        <div className={`w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full transition-colors duration-75 ${isActive ? 'led-active' : 'led-inactive'}`}></div>
+        <div
+          ref={ledRef}
+          data-step={index}
+          className={`w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full transition-colors duration-75 ${isActive ? 'led-active' : 'led-inactive'}`}
+        ></div>
       </div>
       <div className="flex flex-col gap-0.5">
         <Knob value={pitch} onChange={(v) => onChange(index, 'pitch', v)} size="sm" label="" darkMode={darkMode} />
@@ -319,10 +323,28 @@ const App = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
   const fileInputRef = useRef(null);
+  const ledRefs = useRef([]);
+  const scheduledSteps = useRef([]);
+  const rafId = useRef(null);
+  const lastLedIndex = useRef(null);
 
   const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
+
+  const setLedState = (index) => {
+    if (!ledRefs.current.length) return;
+    if (lastLedIndex.current !== null && ledRefs.current[lastLedIndex.current]) {
+      ledRefs.current[lastLedIndex.current].classList.remove('led-active');
+      ledRefs.current[lastLedIndex.current].classList.add('led-inactive');
+    }
+    const target = ledRefs.current[index];
+    if (target) {
+      target.classList.add('led-active');
+      target.classList.remove('led-inactive');
+    }
+    lastLedIndex.current = index;
+  };
 
   // Merge with defaults when loading
   const applyPatch = (patch) => {
@@ -378,7 +400,12 @@ const App = () => {
     try {
       const node = await window.createJroomzWorkletNode(ctx);
       node.connect(ctx.destination);
-      node.port.onmessage = (e) => { if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step); };
+      node.port.onmessage = (e) => {
+        if (e.data.type === 'STEP_CHANGE') {
+          scheduledSteps.current.push({ step: e.data.step, time: e.data.time || ctx.currentTime });
+          scheduledSteps.current.sort((a, b) => a.time - b.time);
+        }
+      };
 
       setAudioCtx(ctx);
       setWorkletNode(node);
@@ -392,6 +419,22 @@ const App = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    if (!audioCtx) return;
+    const tick = () => {
+      const now = audioCtx.currentTime;
+      while (scheduledSteps.current.length && scheduledSteps.current[0].time <= now) {
+        const evt = scheduledSteps.current.shift();
+        setLedState(evt.step);
+        setCurrentStep(evt.step);
+      }
+      rafId.current = requestAnimationFrame(tick);
+    };
+
+    rafId.current = requestAnimationFrame(tick);
+    return () => { if (rafId.current) cancelAnimationFrame(rafId.current); };
+  }, [audioCtx]);
 
   const updateParam = (id, value) => {
     const newValue = id === 'delayRate' ? clampDelay(value) : value;
@@ -486,6 +529,7 @@ const App = () => {
     if (!params.run) {
       const nextStep = (currentStep + 1) % 8;
       setCurrentStep(nextStep);
+      setLedState(nextStep);
       if (workletNode) workletNode.port.postMessage({ type: 'SET_STEP', payload: { step: nextStep } });
     }
   };
@@ -569,6 +613,7 @@ const App = () => {
                       onChange={updateStep}
                       isActive={currentStep === i}
                       darkMode={darkMode}
+                      ledRef={(el) => { ledRefs.current[i] = el; if (el && lastLedIndex.current === null && currentStep === i) setLedState(i); }}
                     />
                   ))}
                 </div>

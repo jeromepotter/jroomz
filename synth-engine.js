@@ -483,7 +483,10 @@
               channelR[i] = Math.tanh(finalR * boost);
           }
 
-          if (stepChanged) { this.port.postMessage({ type: 'STEP_CHANGE', step: newStepIndex }); }
+          if (stepChanged) {
+              const eventTime = currentTime + (channelL.length > 0 ? (i / this.fs) : 0);
+              this.port.postMessage({ type: 'STEP_CHANGE', step: newStepIndex, time: eventTime });
+          }
           return true;
       }
   }
