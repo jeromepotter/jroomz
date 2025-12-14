@@ -217,8 +217,8 @@
           fc = Math.min(Math.max(fc, 0), 0.98);
           const r = res * 4.5;
           const normalizedCut = cutoffFreq / (this.fs * 0.48);
-          const drive = 0.6 + (1 - Math.min(1, normalizedCut)) * 0.4;
-          const x = (input * drive) - r * Math.tanh(this.filter.s4);
+          const drive = 1.0;
+          const x = (input * drive * (1 + r * 0.5)) - r * Math.tanh(this.filter.s4);
           const f = fc;
 
           this.filter.s1 += f * (Math.tanh(x) - Math.tanh(this.filter.s1));
