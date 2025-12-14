@@ -390,6 +390,7 @@
 
           let stepChanged = false;
           let newStepIndex = -1;
+          let stepSampleIndex = -1;
 
           for (let i = 0; i < channelL.length; i++) {
               let trigger = false;
@@ -398,7 +399,7 @@
                   if (this.sequencer.clockPhase >= 1.0) {
                       this.sequencer.clockPhase -= 1.0;
                       this.sequencer.currentStep = (this.sequencer.currentStep + 1) % 8;
-                      trigger = true; stepChanged = true; newStepIndex = this.sequencer.currentStep;
+                      trigger = true; stepChanged = true; newStepIndex = this.sequencer.currentStep; stepSampleIndex = i;
                   }
               }
 
@@ -496,7 +497,10 @@
               channelR[i] = Math.tanh(finalR * boost);
           }
 
-          if (stepChanged) { this.port.postMessage({ type: 'STEP_CHANGE', step: newStepIndex }); }
+          if (stepChanged) {
+              const eventTime = currentTime + (stepSampleIndex >= 0 ? (stepSampleIndex / this.fs) : 0);
+              this.port.postMessage({ type: 'STEP_CHANGE', step: newStepIndex, time: eventTime });
+          }
           return true;
       }
   }
