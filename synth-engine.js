@@ -193,8 +193,9 @@
     let val = 0.0;
     if (type === 0) {
 const x = vco.phase - 0.5;
-    val = 1.0 - 4.0 * (x * x); 
-     } else {
+    val = 2.0 * (1.0 - 4.0 * (x * x)) - 1.0;
+        val *= 1.3; 
+    } else {
         val = vco.phase < 0.5 ? 1.0 : -1.0;
         val += this.polyBlep(vco.phase, dt);
         val -= this.polyBlep((vco.phase + 0.5) % 1.0, dt);
