@@ -215,7 +215,7 @@
 
           let fc = 2.0 * 3.14159 * cutoffFreq / this.fs;
           fc = Math.min(Math.max(fc, 0), 0.98);
-          const r = res * 3.8;
+          const r = res * 4.5;
           const normalizedCut = cutoffFreq / (this.fs * 0.48);
           const drive = 0.6 + (1 - Math.min(1, normalizedCut)) * 0.4;
           const x = (input * drive) - r * Math.tanh(this.filter.s4);
