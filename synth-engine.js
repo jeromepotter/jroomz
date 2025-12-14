@@ -68,7 +68,11 @@
       constructor() {
           super();
           this.fs = (typeof sampleRate !== 'undefined') ? sampleRate : 44100;
-
+          this.envCurves = { 
+    vco: Math.pow(0.5, 3), 
+    vcf: Math.pow(0.5, 3), 
+    vca: Math.pow(0.0, 3) 
+};
           this.vco1 = { phase: 0 };
           this.vco2 = { phase: 0 };
           this.vcoEg = { val: 0, phase: 0 };
@@ -142,6 +146,11 @@
                       this.combsL.forEach(c => c.setFeedback(this.verbFb));
                       this.combsR.forEach(c => c.setFeedback(this.verbFb));
                   }
+                  if (['vcoDecay', 'vcfDecay', 'vcaDecay'].includes(payload.id)) {
+    // Pre-calculate the cubic curve here, once per knob turn
+    const target = payload.id.replace('Decay', ''); // vco, vcf, or vca
+    this.envCurves[target] = Math.pow(payload.value, 3);
+}
                   if (payload.id === 'delayRate') {
                       this.delayTimeSmoother.set(payload.value);
                   }
@@ -163,25 +172,36 @@
           return 0.0;
       }
 
-      getOscSample(vco, type, freq, syncPhase = -1) {
-          freq = Math.max(10.0, Math.min(this.fs * 0.48, freq));
-          if (!Number.isFinite(freq)) freq = 100.0;
+      getOscSample(vco, type, freq, doSync = false) {
+    freq = Math.max(10.0, Math.min(this.fs * 0.48, freq));
+    if (!Number.isFinite(freq)) freq = 100.0;
 
-          const dt = freq / this.fs;
-          if (syncPhase !== -1 && syncPhase < vco.phase) vco.phase = syncPhase;
-          vco.phase += dt;
-          if (vco.phase >= 1.0) vco.phase -= 1.0;
+    const dt = freq / this.fs;
+    
+    if (doSync) {
+        vco.phase = 0; 
+    }
 
-          let val = 0.0;
-          if (type === 0) {
-              val = 4.0 * Math.abs(vco.phase - 0.5) - 1.0;
-          } else {
-              val = vco.phase < 0.5 ? 1.0 : -1.0;
-              val += this.polyBlep(vco.phase, dt);
-              val -= this.polyBlep((vco.phase + 0.5) % 1.0, dt);
-          }
-          return Number.isFinite(val) ? val : 0.0;
-      }
+    vco.phase += dt;
+    
+    let didWrap = false;
+    if (vco.phase >= 1.0) {
+        vco.phase -= 1.0;
+        didWrap = true;
+    }
+
+    let val = 0.0;
+    if (type === 0) {
+const x = vco.phase - 0.5;
+    val = 1.0 - 4.0 * (x * x); 
+     } else {
+        val = vco.phase < 0.5 ? 1.0 : -1.0;
+        val += this.polyBlep(vco.phase, dt);
+        val -= this.polyBlep((vco.phase + 0.5) % 1.0, dt);
+    }
+    
+    return { val: Number.isFinite(val) ? val : 0.0, didWrap };
+}
 
       triggerEnvelopes() {
           this.vcoEg.phase = 1;
@@ -193,20 +213,24 @@
           const attackTime = Math.max(0.001, this.params.vcaAttack);
           
           const attackInc = 1.0 / (attackTime * this.fs);
-          const runEnv = (env, decayParam) => {
+          
+          const runEnv = (env, curvedDecay) => {
               if (env.phase === 1) {
                   env.val += attackInc;
-                  if (env.val >= 1.0) { env.val = 1.0; env.phase = 2; }
+                  if (env.val >= 1.0) { 
+                      env.val = 1.0; 
+                      env.phase = 2; 
+                  }
+                  // --- RESTORED CODE END ---
               } else if (env.phase === 2) {
-                  // CHANGED: Use cubic curve (decayParam^3) for finer control at low values
-                  const curvedDecay = Math.pow(decayParam, 3);
                   const time = 0.01 + (curvedDecay * 1.5);
                   env.val *= Math.exp(-1.0 / (time * this.fs));
               }
           };
-          runEnv(this.vcoEg, this.params.vcoDecay);
-          runEnv(this.vcfEg, this.params.vcfDecay);
-          runEnv(this.vcaEg, this.params.vcaDecay);
+
+          runEnv(this.vcoEg, this.envCurves.vco);
+          runEnv(this.vcfEg, this.envCurves.vcf);
+          runEnv(this.vcaEg, this.envCurves.vca);
       }
 
       runMoogFilter(input, cutoffFreq, res) {
@@ -215,10 +239,10 @@
 
           let fc = 2.0 * 3.14159 * cutoffFreq / this.fs;
           fc = Math.min(Math.max(fc, 0), 0.98);
-          const r = res * 3.8;
+          const r = res * 4.5;
           const normalizedCut = cutoffFreq / (this.fs * 0.48);
-          const drive = 0.6 + (1 - Math.min(1, normalizedCut)) * 0.4;
-          const x = (input * drive) - r * Math.tanh(this.filter.s4);
+          const drive = 1.0;
+          const x = (input * drive * (1 + r * 0.5)) - r * Math.tanh(this.filter.s4);
           const f = fc;
 
           this.filter.s1 += f * (Math.tanh(x) - Math.tanh(this.filter.s1));
@@ -449,14 +473,21 @@
               if (this.params.seqPitchMod === 1) { f1 *= seqPitchFactor; f2 *= seqPitchFactor; }
               else if (this.params.seqPitchMod === 2) { f2 *= seqPitchFactor; }
 
-              const osc1Out = this.getOscSample(this.vco1, this.params.vco1Wave, f1);
+              const vco1Result = this.getOscSample(this.vco1, this.params.vco1Wave, f1);
+const osc1Out = vco1Result.val;
 
-              let f2Mod = osc1Out * fmAmountParam * 4000;
-              if (!Number.isFinite(f2Mod)) f2Mod = 0;
-              f2 += f2Mod;
+// ... (FM logic stays the same) ...
+let f2Mod = osc1Out * fmAmountParam * 4000;
+if (!Number.isFinite(f2Mod)) f2Mod = 0;
+f2 += f2Mod;
 
-              const syncPhase = this.params.hardSync ? this.vco1.phase : -1;
-              const osc2Out = this.getOscSample(this.vco2, this.params.vco2Wave, f2, syncPhase);
+// 2. Determine if we need to sync VCO2
+// We sync if hardSync is ON AND VCO1 just finished a cycle
+const shouldSync = this.params.hardSync && vco1Result.didWrap;
+
+// 3. Process VCO2
+const vco2Result = this.getOscSample(this.vco2, this.params.vco2Wave, f2, shouldSync);
+const osc2Out = vco2Result.val;
               const noiseSamp = (Math.random() * 2 - 1);
 
               let mix = (osc1Out * this.params.vco1Level * 0.7) +
