@@ -631,7 +631,7 @@ const App = () => {
           </div>
 
           <div className={`mt-4 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-400'} flex flex-col md:flex-row items-center justify-end gap-2`}>
-            <div className={`w-full md:w-auto flex items-center justify-between md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
+            <div className={`w-full md:w-auto flex flex-wrap items-center justify-center md:justify-end gap-2 md:gap-4 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300'} px-2 py-1.5 rounded-lg shadow-inner border`}>
               <div className="flex items-center gap-1 border-r border-gray-500 pr-1">
                 <div className="text-[8px] font-bold text-gray-500 tracking-widest hidden sm:block">BEND</div>
                 <Knob label="MIX" value={params.dataBenderMix} onChange={(v) => updateParam('dataBenderMix', v)} size="sm" color="white" darkMode={darkMode} />
