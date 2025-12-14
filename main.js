@@ -314,6 +314,11 @@ const PresetSelector = ({ currentPreset, onSelect, darkMode }) => {
 const App = () => {
   const [audioCtx, setAudioCtx] = useState(null);
   const [workletNode, setWorkletNode] = useState(null);
+  const recorderNodeRef = useRef(null);
+  const recorderModuleLoadedRef = useRef(false);
+  const recordedBuffersRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recorderReady, setRecorderReady] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -371,6 +376,88 @@ const App = () => {
 
   const loadPreset = (index) => applyPatch(window.PRESETS[index]);
 
+  const ensureRecorderModule = async (ctx) => {
+    if (recorderModuleLoadedRef.current) return;
+
+    const recorderCode = `
+      class RecorderProcessor extends AudioWorkletProcessor {
+        constructor() {
+          super();
+          this.isRecording = false;
+          this.port.onmessage = (event) => {
+            if (event.data?.type === 'SET_RECORDING') {
+              this.isRecording = !!event.data.active;
+            }
+          };
+        }
+
+        process(inputs, outputs) {
+          const input = inputs[0];
+          const output = outputs[0];
+          if (!input || input.length < 1 || !output || output.length < 2) {
+            return true;
+          }
+
+          const inL = input[0];
+          const inR = input[1] || input[0];
+          output[0].set(inL);
+          output[1].set(inR);
+
+          if (this.isRecording) {
+            const frames = inL.length;
+            const interleaved = new Float32Array(frames * 2);
+            for (let i = 0; i < frames; i++) {
+              interleaved[i * 2] = inL[i];
+              interleaved[i * 2 + 1] = inR[i];
+            }
+            this.port.postMessage({ type: 'AUDIO_DATA', payload: interleaved }, [interleaved.buffer]);
+          }
+
+          return true;
+        }
+      }
+
+      registerProcessor('jroomz-recorder', RecorderProcessor);
+    `;
+
+    const blob = new Blob([recorderCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    await ctx.audioWorklet.addModule(url);
+    recorderModuleLoadedRef.current = true;
+  };
+
+  const attachRecorderNode = async (ctx, sourceNode) => {
+    if (recorderNodeRef.current) return;
+
+    try {
+      await ensureRecorderModule(ctx);
+
+      const recorderNode = new AudioWorkletNode(ctx, 'jroomz-recorder', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+        channelCount: 2,
+        channelCountMode: 'explicit',
+        channelInterpretation: 'speakers',
+      });
+
+      recorderNode.port.onmessage = (event) => {
+        if (event.data?.type === 'AUDIO_DATA' && event.data.payload) {
+          recordedBuffersRef.current.push(new Float32Array(event.data.payload));
+        }
+      };
+
+      sourceNode.connect(recorderNode);
+      recorderNode.connect(ctx.destination);
+
+      recorderNodeRef.current = recorderNode;
+      setRecorderReady(true);
+    } catch (error) {
+      console.error('Recorder unavailable, connecting directly to output.', error);
+      sourceNode.connect(ctx.destination);
+    }
+  };
+
   const startAudio = async () => {
     if (audioCtx) return;
 
@@ -378,7 +465,7 @@ const App = () => {
 
     try {
       const node = await window.createJroomzWorkletNode(ctx);
-      node.connect(ctx.destination);
+      await attachRecorderNode(ctx, node);
       node.port.onmessage = (e) => { if (e.data.type === 'STEP_CHANGE') setCurrentStep(e.data.step); };
 
       setAudioCtx(ctx);
@@ -462,6 +549,87 @@ const App = () => {
     updateParam('run', newVal);
   };
 
+  const encodeWav = (chunks, sampleRate) => {
+    if (!chunks.length) return null;
+
+    const totalLength = chunks.reduce((sum, arr) => sum + arr.length, 0);
+    const interleaved = new Float32Array(totalLength);
+    let offset = 0;
+    chunks.forEach((chunk) => {
+      interleaved.set(chunk, offset);
+      offset += chunk.length;
+    });
+
+    const buffer = new ArrayBuffer(44 + interleaved.length * 2);
+    const view = new DataView(buffer);
+
+    const writeString = (pos, str) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(pos + i, str.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + interleaved.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 2, true); // channels
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 4, true); // byte rate (16-bit stereo)
+    view.setUint16(32, 4, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    writeString(36, 'data');
+    view.setUint32(40, interleaved.length * 2, true);
+
+    let pcmOffset = 44;
+    for (let i = 0; i < interleaved.length; i++) {
+      const sample = Math.max(-1, Math.min(1, interleaved[i]));
+      view.setInt16(pcmOffset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      pcmOffset += 2;
+    }
+
+    return buffer;
+  };
+
+  const downloadRecording = () => {
+    if (!audioCtx || !recordedBuffersRef.current.length) return;
+
+    const wavBuffer = encodeWav(recordedBuffersRef.current, audioCtx.sampleRate);
+    if (!wavBuffer) return;
+
+    const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const randomSuffix = Math.floor(Math.random() * 900) + 100;
+    const fileName = `jroomz-${randomSuffix}.wav`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const toggleRecording = async () => {
+    if (!audioCtx || !workletNode || !recorderNodeRef.current) return;
+
+    if (isRecording) {
+      recorderNodeRef.current.port.postMessage({ type: 'SET_RECORDING', active: false });
+      setIsRecording(false);
+      downloadRecording();
+      recordedBuffersRef.current = [];
+      return;
+    }
+
+    if (audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    recordedBuffersRef.current = [];
+    recorderNodeRef.current.port.postMessage({ type: 'SET_RECORDING', active: true });
+    setIsRecording(true);
+  };
+
   // --- SPACEBAR LISTENER ---
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -526,6 +694,14 @@ const App = () => {
               className={`w-6 h-6 flex items-center justify-center rounded border text-xs font-bold ${darkMode ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white bg-gray-800' : 'border-gray-500 text-gray-700 hover:border-black hover:text-black bg-gray-200'}`}
             >
               L
+            </button>
+            <button
+              onClick={toggleRecording}
+              disabled={!recorderReady}
+              title={recorderReady ? (isRecording ? 'Stop recording' : 'Start recording') : 'Initializing audio routing'}
+              className={`w-6 h-6 flex items-center justify-center rounded border ${recorderReady ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'} ${darkMode ? 'border-gray-500 bg-gray-800 hover:border-red-500' : 'border-gray-500 bg-gray-200 hover:border-red-500'}`}
+            >
+              <span className={`w-3 h-3 rounded-full ${isRecording ? 'bg-white border border-red-700' : 'bg-red-600'}`}></span>
             </button>
             <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileInput} />
           </div>
