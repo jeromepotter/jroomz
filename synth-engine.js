@@ -47,20 +47,372 @@
       }
   }
 
-  class LowpassCombFilter {
-      constructor(bufferSize) {
-          this.bufferSize = bufferSize;
-          this.buffer = new Float32Array(bufferSize);
-          this.index = 0; this.store = 0; this.feedback = 0.8; this.damping = 0.2;
-      }
-      setFeedback(val) { this.feedback = val; }
-  }
+  class ZitaReverb {
+      constructor(sampleRate) {
+          this.sampleRate = Math.max(1, Math.min(192000, sampleRate || 44100));
 
-  class AllpassFilter {
-      constructor(bufferSize) {
-          this.bufferSize = bufferSize;
-          this.buffer = new Float32Array(bufferSize);
-          this.index = 0;
+          this.params = {
+              preDel: 20.0,
+              lfFc: 200.0,
+              lowRt60: 1.0,
+              midRt60: 1.0,
+              hfDamp: 6000.0
+          };
+
+          this._decayNorm = 0.7;
+          this._needsUpdate = true;
+
+          this.initConstants();
+          this.initState();
+          this.updateCoefficients();
+      }
+
+      initConstants() {
+          const SR = this.sampleRate;
+
+          this.fConst0 = Math.min(192000.0, Math.max(1.0, SR));
+          this.fConst1 = 6.283185307179586 / this.fConst0;
+          this.fConst2 = Math.floor(0.125 * this.fConst0 + 0.5);
+          this.fConst3 = (0.0 - (6.907755278982137 * this.fConst2)) / this.fConst0;
+          this.fConst4 = 3.141592653589793 / this.fConst0;
+
+          this.fConst5 = Math.floor(0.0134579996 * this.fConst0 + 0.5);
+          this.iConst6 = Math.min(8192, Math.max(0, this.fConst2 - this.fConst5));
+          this.fConst7 = 0.001 * this.fConst0;
+          this.iConst8 = Math.min(1024, Math.max(0, this.fConst5 - 1));
+
+          this.delayConsts = [
+              { main: Math.floor(0.219990999 * this.fConst0 + 0.5), apf: Math.floor(0.0191229992 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.192303002 * this.fConst0 + 0.5), apf: Math.floor(0.0292910002 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.174713001 * this.fConst0 + 0.5), apf: Math.floor(0.0229039993 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.256891012 * this.fConst0 + 0.5), apf: Math.floor(0.0273330007 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.127837002 * this.fConst0 + 0.5), apf: Math.floor(0.0316039994 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.210389003 * this.fConst0 + 0.5), apf: Math.floor(0.0244210009 * this.fConst0 + 0.5) },
+              { main: Math.floor(0.153128996 * this.fConst0 + 0.5), apf: Math.floor(0.0203460008 * this.fConst0 + 0.5) },
+              { main: this.fConst2, apf: this.fConst5 }
+          ];
+
+          this.decayConsts = this.delayConsts.map((dc) => ({
+              main: (0.0 - (6.907755278982137 * dc.main)) / this.fConst0,
+              apf: dc.apf
+          }));
+      }
+
+      initState() {
+          const maxDelay = 32768;
+
+          this.inputL = new Float32Array(maxDelay);
+          this.inputR = new Float32Array(maxDelay);
+
+          this.delays = [];
+          for (let i = 0; i < 8; i++) {
+              this.delays.push({
+                  main: new Float32Array(maxDelay),
+                  apf: new Float32Array(4096)
+              });
+          }
+
+          this.filterStates = [];
+          for (let i = 0; i < 8; i++) {
+              this.filterStates.push({
+                  damping: new Float32Array(2),
+                  lowpass: new Float32Array(2),
+                  combOut: new Float32Array(2),
+                  rec: new Float32Array(3)
+              });
+          }
+
+          this.lfFilter = new Float32Array(2);
+          this.combScratch = new Float32Array(8);
+          this.IOTA = 0;
+      }
+
+      power2(x) { return x * x; }
+
+      updateCoefficients() {
+          const params = this.params;
+
+          const fSlow0 = Math.cos(this.fConst1 * params.hfDamp);
+          this.coeffs = [];
+
+          for (let i = 0; i < 8; i++) {
+              const decayConst = this.decayConsts[i].main;
+
+              const fSlow2 = Math.exp(decayConst / params.midRt60);
+              const fSlow3 = this.power2(fSlow2);
+              const fSlow4 = 1.0 - (fSlow0 * fSlow3);
+              const fSlow5 = 1.0 - fSlow3;
+              const fSlow6 = fSlow4 / fSlow5;
+              const fSlow7 = Math.sqrt(Math.max(0.0, (this.power2(fSlow4) / this.power2(fSlow5)) - 1.0));
+              const fSlow8 = fSlow6 - fSlow7;
+              const fSlow9 = fSlow2 * (fSlow7 + (1.0 - fSlow6));
+
+              const fSlow11 = (Math.exp(decayConst / params.lowRt60) / fSlow2) - 1.0;
+
+              this.coeffs.push({ b0: fSlow8, a1: fSlow9, lowMult: fSlow11 });
+          }
+
+          const fSlow12 = 1.0 / Math.tan(this.fConst4 * params.lfFc);
+          const fSlow13 = fSlow12 + 1.0;
+          this.lfCoeff = {
+              scale: 1.0 / fSlow13,
+              feedback: (1.0 - fSlow12) / fSlow13
+          };
+
+          this.preDelaySamples = Math.min(8192, Math.max(0, Math.floor(this.fConst7 * params.preDel)));
+          this._needsUpdate = false;
+      }
+
+      setDecayNormalized(decayNorm) {
+          const clamped = Math.max(0.0, Math.min(1.0, decayNorm));
+          if (Math.abs(clamped - this._decayNorm) < 1e-4) return;
+
+          this._decayNorm = clamped;
+          const decaySeconds = 0.35 + clamped * 3.65;
+          this.params.midRt60 = decaySeconds;
+          this.params.lowRt60 = decaySeconds * 0.92;
+          this._needsUpdate = true;
+      }
+
+      prepareBlock(decayNorm) {
+          this.setDecayNormalized(decayNorm);
+          if (this._needsUpdate) {
+              this.updateCoefficients();
+          }
+      }
+
+      processSample(inL, inR) {
+          const idx = this.IOTA & 16383;
+
+          this.inputL[idx] = inL;
+          this.inputR[idx] = inR;
+
+          const delayedL = this.inputL[(this.IOTA - this.preDelaySamples) & 16383];
+          const delayedR = this.inputR[(this.IOTA - this.preDelaySamples) & 16383];
+
+          const fTemp0 = 0.3 * delayedL;
+          const fTemp2 = 0.3 * delayedR;
+
+          const combOuts = this.combScratch;
+
+          {
+              const f = this.filterStates[0];
+              const coeff = this.coeffs[0];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - this.iConst6) & 16383;
+              this.delays[0].main[idx] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = this.delays[0].main[delayIdx] - (0.6 * f.combOut[1]) - fTemp0;
+              const apfIdx = (this.IOTA - this.iConst8) & 2047;
+              this.delays[0].apf[(this.IOTA & 2047)] = apfInput;
+              f.combOut[0] = this.delays[0].apf[apfIdx];
+
+              combOuts[0] = 0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[1];
+              const coeff = this.coeffs[1];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(16384, Math.max(0, this.delayConsts[1].main - this.delayConsts[1].apf))) & 32767;
+              this.delays[1].main[(this.IOTA & 32767)] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = (0.6 * f.combOut[1]) + this.delays[1].main[delayIdx] - fTemp2;
+              const apfIdx = (this.IOTA - Math.min(1024, Math.max(0, this.delayConsts[1].apf - 1))) & 2047;
+              this.delays[1].apf[(this.IOTA & 2047)] = apfInput;
+              f.combOut[0] = this.delays[1].apf[apfIdx];
+
+              combOuts[1] = -0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[2];
+              const coeff = this.coeffs[2];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(8192, Math.max(0, this.delayConsts[2].main - this.delayConsts[2].apf))) & 16383;
+              this.delays[2].main[idx] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = (0.6 * f.combOut[1]) + this.delays[2].main[delayIdx] + fTemp2;
+              const apfIdx = (this.IOTA - Math.min(2048, Math.max(0, this.delayConsts[2].apf - 1))) & 4095;
+              this.delays[2].apf[(this.IOTA & 4095)] = apfInput;
+              f.combOut[0] = this.delays[2].apf[apfIdx];
+
+              combOuts[2] = -0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[3];
+              const coeff = this.coeffs[3];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(8192, Math.max(0, this.delayConsts[3].main - this.delayConsts[3].apf))) & 16383;
+              this.delays[3].main[idx] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = this.delays[3].main[delayIdx] + fTemp0 - (0.6 * f.combOut[1]);
+              const apfIdx = (this.IOTA - Math.min(2048, Math.max(0, this.delayConsts[3].apf - 1))) & 4095;
+              this.delays[3].apf[(this.IOTA & 4095)] = apfInput;
+              f.combOut[0] = this.delays[3].apf[apfIdx];
+
+              combOuts[3] = 0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[4];
+              const coeff = this.coeffs[4];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(16384, Math.max(0, this.delayConsts[4].main - this.delayConsts[4].apf))) & 32767;
+              this.delays[4].main[(this.IOTA & 32767)] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = (0.6 * f.combOut[1]) + this.delays[4].main[delayIdx] - fTemp2;
+              const apfIdx = (this.IOTA - Math.min(2048, Math.max(0, this.delayConsts[4].apf - 1))) & 4095;
+              this.delays[4].apf[(this.IOTA & 4095)] = apfInput;
+              f.combOut[0] = this.delays[4].apf[apfIdx];
+
+              combOuts[4] = -0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[5];
+              const coeff = this.coeffs[5];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(8192, Math.max(0, this.delayConsts[5].main - this.delayConsts[5].apf))) & 16383;
+              this.delays[5].main[idx] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = this.delays[5].main[delayIdx] - (0.6 * f.combOut[1]) - fTemp0;
+              const apfIdx = (this.IOTA - Math.min(2048, Math.max(0, this.delayConsts[5].apf - 1))) & 4095;
+              this.delays[5].apf[(this.IOTA & 4095)] = apfInput;
+              f.combOut[0] = this.delays[5].apf[apfIdx];
+
+              combOuts[5] = 0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[6];
+              const coeff = this.coeffs[6];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(16384, Math.max(0, this.delayConsts[6].main - this.delayConsts[6].apf))) & 32767;
+              this.delays[6].main[(this.IOTA & 32767)] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = (0.6 * f.combOut[1]) + this.delays[6].main[delayIdx] + fTemp2;
+              const apfIdx = (this.IOTA - Math.min(2048, Math.max(0, this.delayConsts[6].apf - 1))) & 4095;
+              this.delays[6].apf[(this.IOTA & 4095)] = apfInput;
+              f.combOut[0] = this.delays[6].apf[apfIdx];
+
+              combOuts[6] = -0.6 * apfInput;
+          }
+
+          {
+              const f = this.filterStates[7];
+              const coeff = this.coeffs[7];
+
+              f.lowpass[0] = (this.lfCoeff.scale * (f.rec[1] + f.rec[2])) + (this.lfCoeff.feedback * f.lowpass[1]);
+              f.damping[0] = (coeff.b0 * f.damping[1]) + (coeff.a1 * (f.rec[1] + (coeff.lowMult * f.lowpass[0])));
+
+              const delayIdx = (this.IOTA - Math.min(8192, Math.max(0, this.delayConsts[7].main - this.delayConsts[7].apf))) & 16383;
+              this.delays[7].main[idx] = (0.353553385 * f.damping[0]) + 9.99999968e-21;
+
+              const apfInput = this.delays[7].main[delayIdx] + fTemp0 - (0.6 * f.combOut[1]);
+              const apfIdx = (this.IOTA - Math.min(1024, Math.max(0, this.delayConsts[7].apf - 1))) & 2047;
+              this.delays[7].apf[(this.IOTA & 2047)] = apfInput;
+              f.combOut[0] = this.delays[7].apf[apfIdx];
+
+              combOuts[7] = 0.6 * apfInput;
+          }
+
+          const fTemp10 = this.filterStates[7].combOut[1] + combOuts[7];
+          const fTemp11 = combOuts[6] + (this.filterStates[6].combOut[1] + fTemp10);
+          const fTemp12 = combOuts[4] + (this.filterStates[4].combOut[1] + (combOuts[5] + (this.filterStates[5].combOut[1] + fTemp11)));
+
+          const fRec0 = combOuts[0] + (combOuts[1] + (this.filterStates[1].combOut[1] + (this.filterStates[0].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp12)))))));
+
+          const fTemp13 = combOuts[5] + (this.filterStates[5].combOut[1] + fTemp10);
+          const fTemp14 = this.filterStates[6].combOut[1] + combOuts[6];
+          const fTemp15 = combOuts[4] + (this.filterStates[4].combOut[1] + fTemp14);
+
+          const fRec1 = (combOuts[0] + (this.filterStates[0].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp13))))) - (combOuts[1] + (this.filterStates[1].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + fTemp15))));
+
+          const fTemp16 = combOuts[4] + (this.filterStates[4].combOut[1] + (this.filterStates[5].combOut[1] + combOuts[5]));
+
+          const fRec2 = (combOuts[2] + (this.filterStates[2].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp11))))) - (combOuts[0] + (combOuts[1] + (this.filterStates[1].combOut[1] + (this.filterStates[0].combOut[1] + fTemp16))));
+
+          const fTemp17 = combOuts[4] + (this.filterStates[4].combOut[1] + fTemp10);
+          const fTemp18 = combOuts[5] + (this.filterStates[5].combOut[1] + fTemp14);
+
+          const fRec3 = (combOuts[1] + (this.filterStates[1].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp17))))) - (combOuts[0] + (this.filterStates[0].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + fTemp18))));
+
+          const fRec4 = fTemp12 - (combOuts[0] + (combOuts[1] + (this.filterStates[1].combOut[1] + (this.filterStates[0].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + (this.filterStates[3].combOut[1] + combOuts[3])))))));
+
+          const fRec5 = (combOuts[1] + (this.filterStates[1].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + fTemp13))))) - (combOuts[0] + (this.filterStates[0].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp15))));
+
+          const fRec6 = (combOuts[0] + (combOuts[1] + (this.filterStates[1].combOut[1] + (this.filterStates[0].combOut[1] + fTemp11))))) - (combOuts[2] + (this.filterStates[2].combOut[1] + (this.filterStates[3].combOut[1] + fTemp16)));
+
+          const fRec7 = (combOuts[0] + (this.filterStates[0].combOut[1] + (combOuts[2] + (this.filterStates[2].combOut[1] + fTemp17))))) - (combOuts[1] + (this.filterStates[1].combOut[1] + (combOuts[3] + (this.filterStates[3].combOut[1] + fTemp18))));
+
+          const outL = 0.37 * (fRec1 + fRec2);
+          const outR = 0.37 * (fRec1 - fRec2);
+
+          for (let j = 0; j < 8; j++) {
+              const f = this.filterStates[j];
+              f.lowpass[1] = f.lowpass[0];
+              f.damping[1] = f.damping[0];
+              f.combOut[1] = f.combOut[0];
+          }
+
+          this.filterStates[0].rec[2] = this.filterStates[0].rec[1];
+          this.filterStates[0].rec[1] = this.filterStates[0].rec[0];
+          this.filterStates[0].rec[0] = fRec0;
+
+          this.filterStates[1].rec[2] = this.filterStates[1].rec[1];
+          this.filterStates[1].rec[1] = this.filterStates[1].rec[0];
+          this.filterStates[1].rec[0] = fRec1;
+
+          this.filterStates[2].rec[2] = this.filterStates[2].rec[1];
+          this.filterStates[2].rec[1] = this.filterStates[2].rec[0];
+          this.filterStates[2].rec[0] = fRec2;
+
+          this.filterStates[3].rec[2] = this.filterStates[3].rec[1];
+          this.filterStates[3].rec[1] = this.filterStates[3].rec[0];
+          this.filterStates[3].rec[0] = fRec3;
+
+          this.filterStates[4].rec[2] = this.filterStates[4].rec[1];
+          this.filterStates[4].rec[1] = this.filterStates[4].rec[0];
+          this.filterStates[4].rec[0] = fRec4;
+
+          this.filterStates[5].rec[2] = this.filterStates[5].rec[1];
+          this.filterStates[5].rec[1] = this.filterStates[5].rec[0];
+          this.filterStates[5].rec[0] = fRec5;
+
+          this.filterStates[6].rec[2] = this.filterStates[6].rec[1];
+          this.filterStates[6].rec[1] = this.filterStates[6].rec[0];
+          this.filterStates[6].rec[0] = fRec6;
+
+          this.filterStates[7].rec[2] = this.filterStates[7].rec[1];
+          this.filterStates[7].rec[1] = this.filterStates[7].rec[0];
+          this.filterStates[7].rec[0] = fRec7;
+
+          this.IOTA++;
+
+          return [outL, outR];
       }
   }
 
@@ -91,14 +443,7 @@
           this.pitchSmoother = new SmoothValue(0.5);
           this.velSmoother = new SmoothValue(0.5);
 
-          const tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
-          const stereospread = 23;
-          this.combsL = tunings.map(t => new LowpassCombFilter(t));
-          this.combsR = tunings.map(t => new LowpassCombFilter(t + stereospread));
-
-          this.allpassesL = [new AllpassFilter(556), new AllpassFilter(441), new AllpassFilter(341), new AllpassFilter(225)];
-          this.allpassesR = [new AllpassFilter(556+stereospread), new AllpassFilter(441+stereospread), new AllpassFilter(341+stereospread), new AllpassFilter(225+stereospread)];
-          this.verbFb = 0.7;
+          this.reverb = new ZitaReverb(this.fs);
 
           this.sequencer = {
               currentStep: 0,
@@ -128,6 +473,8 @@
 
           this.dataBenderState = { sampleCounter: 0, sampleHold: 1, lastL: 0, lastR: 0 };
 
+          this.reverb.setDecayNormalized(this.params.reverbDecay);
+
           this.port.onmessage = (e) => {
               const { type, payload } = e.data;
               if (type === 'PARAM_UPDATE') {
@@ -138,9 +485,7 @@
                   this.params[payload.id] = payload.value;
 
                   if (payload.id === 'reverbDecay') {
-                      this.verbFb = 0.7 + (payload.value * 0.28);
-                      this.combsL.forEach(c => c.setFeedback(this.verbFb));
-                      this.combsR.forEach(c => c.setFeedback(this.verbFb));
+                      this.reverb.setDecayNormalized(payload.value);
                   }
                   if (payload.id === 'delayRate') {
                       this.delayTimeSmoother.set(payload.value);
@@ -296,14 +641,25 @@
           return [inL + dL * wet, inR + dR * wet];
       }
 
-      processDataBender(inL, inR) {
-          const mix = Math.max(0, Math.min(1, this.params.dataBenderMix ?? 0));
-          if (mix <= 0.0001) return [inL, inR];
+        processDataBender(inL, inR) {
+            const mixSrc = (this.params.dataBenderMix !== undefined && this.params.dataBenderMix !== null)
+                ? this.params.dataBenderMix : 0;
+            const mix = Math.max(0, Math.min(1, mixSrc));
+            if (mix <= 0.0001) return [inL, inR];
 
-          const crushAmt = Math.max(0, Math.min(1, this.params.dataBenderCrush ?? 0));
-          const dropAmt = Math.max(0, Math.min(1, this.params.dataBenderDrop ?? 0));
-          const driveAmt = Math.max(0, Math.min(1, this.params.dataBenderDrive ?? 0));
-          const rateAmt = Math.max(0, Math.min(1, this.params.dataBenderRate ?? 0));
+            const crushSrc = (this.params.dataBenderCrush !== undefined && this.params.dataBenderCrush !== null)
+                ? this.params.dataBenderCrush : 0;
+            const dropSrc = (this.params.dataBenderDrop !== undefined && this.params.dataBenderDrop !== null)
+                ? this.params.dataBenderDrop : 0;
+            const driveSrc = (this.params.dataBenderDrive !== undefined && this.params.dataBenderDrive !== null)
+                ? this.params.dataBenderDrive : 0;
+            const rateSrc = (this.params.dataBenderRate !== undefined && this.params.dataBenderRate !== null)
+                ? this.params.dataBenderRate : 0;
+
+            const crushAmt = Math.max(0, Math.min(1, crushSrc));
+            const dropAmt = Math.max(0, Math.min(1, dropSrc));
+            const driveAmt = Math.max(0, Math.min(1, driveSrc));
+            const rateAmt = Math.max(0, Math.min(1, rateSrc));
 
           const bitDepth = Math.max(3, Math.floor(16 - (crushAmt * 12)));
           const steps = Math.pow(2, bitDepth) - 1;
@@ -337,43 +693,7 @@
       }
 
       processReverb(inL, inR) {
-          const mix = (inL + inR) * 0.5 * 0.015;
-          let oL = 0, oR = 0;
-
-          for (let i = 0; i < 8; i++) {
-              const c = this.combsL[i];
-              const out = c.buffer[c.index];
-              c.store = (out * 0.8) + (c.store * 0.2);
-              c.buffer[c.index] = mix + (c.store * this.verbFb);
-              c.index = (c.index + 1) % c.bufferSize;
-              oL += out;
-          }
-          for (let i = 0; i < 8; i++) {
-              const c = this.combsR[i];
-              const out = c.buffer[c.index];
-              c.store = (out * 0.8) + (c.store * 0.2);
-              c.buffer[c.index] = mix + (c.store * this.verbFb);
-              c.index = (c.index + 1) % c.bufferSize;
-              oR += out;
-          }
-
-          for (let i = 0; i < 4; i++) {
-              const ap = this.allpassesL[i];
-              const bufOut = ap.buffer[ap.index];
-              const out = -oL + bufOut;
-              ap.buffer[ap.index] = oL + (bufOut * 0.5);
-              ap.index = (ap.index + 1) % ap.bufferSize;
-              oL = out;
-          }
-          for (let i = 0; i < 4; i++) {
-              const ap = this.allpassesR[i];
-              const bufOut = ap.buffer[ap.index];
-              const out = -oR + bufOut;
-              ap.buffer[ap.index] = oR + (bufOut * 0.5);
-              ap.index = (ap.index + 1) % ap.bufferSize;
-              oR = out;
-          }
-          return [oL, oR];
+          return this.reverb.processSample(inL, inR);
       }
 
       process(inputs, outputs) {
@@ -387,6 +707,8 @@
           const hpFreq = 20 * Math.pow(20000/20, this.params.masterHP);
           const lpFreq = 20 * Math.pow(20000/20, this.params.masterLP);
           const masterLPCoeffs = this.computeMasterLPCoeffs(lpFreq, this.params.masterRes);
+
+          this.reverb.prepareBlock(this.params.reverbDecay);
 
           let stepChanged = false;
           let newStepIndex = -1;
