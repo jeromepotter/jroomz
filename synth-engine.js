@@ -463,7 +463,7 @@ const x = vco.phase - 0.5;
               let fmAmountParam = this.params.fmAmount;
 
               if (this.params.velModTarget === 1) {
-                  resonanceParam = Math.min(0.99, resonanceParam + velAccentCurve * 0.8);
+                  resonanceParam = Math.min(0.99, resonanceParam + velAccentCurve * 1.6);
               } else if (this.params.velModTarget === 2) {
                   fmAmountParam = Math.min(1.0, fmAmountParam + velAccentCurve * 1.0);
               }
