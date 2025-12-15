@@ -142,6 +142,56 @@
       name: "BRAIN-MELT",
       params: { tempo: 220, vco1Freq: 0.5, vco2Freq: 0.9, fmAmount: 1.0, hardSync: 1, noiseLevel: 0.5, cutoff: 0.8, resonance: 0.9, noiseVcfMod: 0.8, vcaDecay: 0.3, delayWet: 0.4, delayRate: 0.125, delayFdbk: 0.9, reverbMix: 0.3, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.003 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: Math.random() }))
+    },
+    {
+      name: "METAL-HATS",
+      params: { tempo: 128, vco1Level: 0.0, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.85, resonance: 0.3, vcaDecay: 0.08, vcaAttack: 0.001, delayWet: 0.0, masterHP: 0.6, masterLP: 1.0, volume: 0.7 },
+      steps: [{ p: 0.5, v: 0.6 }, { p: 0.5, v: 0.4 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.5 }, { p: 0.5, v: 0.6 }, { p: 0.5, v: 0.4 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.5 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "TOM-TOM-CLUB",
+      params: { tempo: 115, vco1Freq: 0.35, vco1Wave: 1, vco1Level: 0.9, vco1EgAmt: 0.7, vcoDecay: 0.35, cutoff: 0.4, resonance: 0.6, vcfEgAmt: 0.6, vcaDecay: 0.3, vcaAttack: 0.005, reverbMix: 0.15, masterHP: 0.0, masterLP: 1.0 },
+      steps: [{ p: 0.4, v: 0.8 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.0, v: 0.0 }, { p: 0.3, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.6, v: 0.6 }, { p: 0.4, v: 0.5 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "ROLL-CALL",
+      params: { tempo: 140, vco1Freq: 0.5, vco1Wave: 0, vco1Level: 0.5, noiseLevel: 0.6, cutoff: 0.65, resonance: 0.4, vcfEgAmt: 0.5, vcaDecay: 0.12, vcaAttack: 0.002, reverbMix: 0.2, masterHP: 0.2, masterLP: 1.0 },
+      steps: [{ p: 0.5, v: 0.7 }, { p: 0.5, v: 0.75 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.85 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.85 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.9 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "KICK-FLIP",
+      params: { tempo: 128, vco1Freq: 0.18, vco1Wave: 1, vco1Level: 1.0, vco1EgAmt: 0.6, vcoDecay: 0.25, cutoff: 0.3, resonance: 0.25, vcfEgAmt: 0.7, vcaDecay: 0.2, vcaAttack: 0.003, delayWet: 0.0, masterHP: 0.0, masterLP: 1.0 },
+      steps: [{ p: 0.5, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.6 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "FOUR-FLOOR",
+      params: { tempo: 125, vco1Freq: 0.15, vco1Wave: 1, vco1Level: 1.0, vco1EgAmt: 0.5, vcoDecay: 0.3, cutoff: 0.25, resonance: 0.3, vcfEgAmt: 0.6, vcaDecay: 0.25, vcaAttack: 0.003, delayWet: 0.0, masterHP: 0.0, masterLP: 1.0 },
+      steps: [{ p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "CLOSED-CASE",
+      params: { tempo: 135, vco1Level: 0.0, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.75, resonance: 0.2, vcaDecay: 0.04, vcaAttack: 0.001, delayWet: 0.0, masterHP: 0.7, masterLP: 1.0, volume: 0.7 },
+      steps: [{ p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "RIM-SHOT-CITY",
+      params: { tempo: 120, vco1Freq: 0.6, vco1Wave: 0, vco1Level: 0.7, noiseLevel: 0.4, vco1EgAmt: 0.7, vcoDecay: 0.06, cutoff: 0.6, resonance: 0.5, vcaDecay: 0.06, vcaAttack: 0.001, reverbMix: 0.1, masterHP: 0.3, masterLP: 1.0 },
+      steps: [{ p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.6, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.6, v: 0.9 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "SNARE-TRAP",
+      params: { tempo: 128, vco1Freq: 0.45, vco1Wave: 0, vco1Level: 0.6, noiseLevel: 0.7, vco1EgAmt: 0.6, vcoDecay: 0.15, cutoff: 0.55, resonance: 0.35, vcfEgAmt: 0.6, vcaDecay: 0.15, vcaAttack: 0.002, reverbMix: 0.15, masterHP: 0.15, masterLP: 1.0 },
+      steps: [{ p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.3 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "CRASH-LANDING",
+      params: { tempo: 100, vco1Level: 0.0, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.9, resonance: 0.5, vcaDecay: 0.6, vcaAttack: 0.005, reverbMix: 0.4, reverbDecay: 0.8, delayWet: 0.0, masterHP: 0.4, masterLP: 1.0, volume: 0.75 },
+      steps: [{ p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
+    },
+    {
+      name: "OPEN-WINDOW",
+      params: { tempo: 128, vco1Level: 0.0, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.8, resonance: 0.4, vcaDecay: 0.25, vcaAttack: 0.002, delayWet: 0.0, reverbMix: 0.1, masterHP: 0.5, masterLP: 1.0, volume: 0.7 },
+      steps: [{ p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     }
   ];
 
