@@ -668,6 +668,40 @@ const App = () => {
       document.removeEventListener('mousedown', handleInteraction);
     };
   }, [audioCtx]);
+
+  // --- PAGE VISIBILITY WAKE ---
+  // Handle longer suspensions (5+ minutes) when tab becomes visible again
+  useEffect(() => {
+    if (!audioCtx) return;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+        } catch (err) {
+          console.error('Failed to resume audio context on visibility change:', err);
+        }
+      }
+    };
+
+    const handleFocus = async () => {
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+        } catch (err) {
+          console.error('Failed to resume audio context on focus:', err);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [audioCtx]);
   // ------------------------------
 
   const doTrigger = async () => {
