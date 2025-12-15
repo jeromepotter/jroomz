@@ -324,17 +324,11 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentPresetName, setCurrentPresetName] = useState(window.PRESETS[0].name);
-  const [showAudioSuspendedBanner, setShowAudioSuspendedBanner] = useState(false);
   const fileInputRef = useRef(null);
 
   const initialParams = { ...window.PRESETS[0].params, delayRate: clampDelay(window.PRESETS[0].params.delayRate ?? window.DEFAULT_PARAMS.delayRate) };
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
-
-  // Debug: log banner state changes
-  useEffect(() => {
-    console.log('[JROOMZ] Banner state changed to:', showAudioSuspendedBanner);
-  }, [showAudioSuspendedBanner]);
 
   // Merge with defaults when loading
   const applyPatch = (patch) => {
@@ -550,18 +544,10 @@ const App = () => {
   };
 
   const toggleRun = async () => {
-    console.log('[JROOMZ] toggleRun - current run state:', params.run, 'audio context state:', audioCtx?.state);
     if (audioCtx && audioCtx.state === 'suspended') {
-      console.log('[JROOMZ] toggleRun - attempting to resume audio...');
-      try {
-        await audioCtx.resume();
-        console.log('[JROOMZ] toggleRun - audio resumed, new state:', audioCtx.state);
-      } catch (err) {
-        console.error('[JROOMZ] toggleRun - failed to resume:', err);
-      }
+      await audioCtx.resume();
     }
     const newVal = params.run ? 0 : 1;
-    console.log('[JROOMZ] toggleRun - setting run to:', newVal);
     updateParam('run', newVal);
   };
 
@@ -661,105 +647,27 @@ const App = () => {
   }, [toggleRun]);
   // ------------------------------
 
-  // --- AUDIO CONTEXT STATE MONITOR ---
-  // Check audio context state and show banner if suspended
+  // --- AUDIO WAKE (from no-b-250 working implementation) ---
+  // Simple, proven approach: resume on any touch/click
   useEffect(() => {
-    if (!audioCtx) {
-      console.log('[JROOMZ] State monitor - no audioCtx');
-      return;
-    }
+    if (!audioCtx) return;
 
-    console.log('[JROOMZ] State monitor - setting up, initial state:', audioCtx.state);
-
-    const checkAudioState = () => {
-      console.log('[JROOMZ] Checking audio state:', audioCtx.state, 'visibilityState:', document.visibilityState);
-      if (audioCtx.state === 'suspended') {
-        console.log('[JROOMZ] Audio is SUSPENDED - showing banner');
-        setShowAudioSuspendedBanner(true);
-      } else {
-        console.log('[JROOMZ] Audio is', audioCtx.state, '- hiding banner');
-        setShowAudioSuspendedBanner(false);
+    const resumeAudio = () => {
+      // If context is suspended or interrupted (iOS), resume it
+      if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+        audioCtx.resume();
       }
     };
 
-    // Check immediately
-    checkAudioState();
-
-    // Check periodically
-    const interval = setInterval(checkAudioState, 1000);
-
-    // Check on visibility change
-    const handleVisibilityChange = () => {
-      console.log('[JROOMZ] Visibility changed to:', document.visibilityState);
-      if (document.visibilityState === 'visible') {
-        checkAudioState();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Use pointerdown with capture to catch events early
+    document.addEventListener('pointerdown', resumeAudio, { capture: true });
+    document.addEventListener('touchstart', resumeAudio, { passive: true });
+    document.addEventListener('click', resumeAudio);
 
     return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [audioCtx]);
-
-  // --- AGGRESSIVE AUDIO WAKE ---
-  // Resume audio context on ANY user interaction
-  useEffect(() => {
-    if (!audioCtx) {
-      console.log('[JROOMZ] Interaction handler - no audioCtx');
-      return;
-    }
-
-    console.log('[JROOMZ] Interaction handler - setting up listeners');
-
-    const resumeAudio = async () => {
-      console.log('[JROOMZ] resumeAudio called - current state:', audioCtx.state);
-      if (audioCtx.state === 'suspended') {
-        console.log('[JROOMZ] Attempting to resume audio context...');
-        try {
-          await audioCtx.resume();
-          console.log('[JROOMZ] Audio context resumed successfully. State:', audioCtx.state);
-          setShowAudioSuspendedBanner(false);
-        } catch (err) {
-          console.error('[JROOMZ] Failed to resume audio context:', err);
-        }
-      } else {
-        console.log('[JROOMZ] Audio already in state:', audioCtx.state, '- no resume needed');
-      }
-    };
-
-    // Try to resume on visibility change
-    const handleVisibilityChange = async () => {
-      console.log('[JROOMZ] handleVisibilityChange - visibilityState:', document.visibilityState, 'audioCtx.state:', audioCtx.state);
-      if (document.visibilityState === 'visible') {
-        console.log('[JROOMZ] Page became visible, attempting resume...');
-        await resumeAudio();
-      }
-    };
-
-    // Try to resume on ANY user interaction
-    const handleInteraction = async (e) => {
-      console.log('[JROOMZ] User interaction detected:', e.type);
-      await resumeAudio();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('touchstart', handleInteraction, { passive: true });
-    document.addEventListener('touchend', handleInteraction, { passive: true });
-    document.addEventListener('mousedown', handleInteraction);
-    document.addEventListener('click', handleInteraction);
-    window.addEventListener('focus', resumeAudio);
-
-    return () => {
-      console.log('[JROOMZ] Cleaning up interaction listeners');
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('touchstart', handleInteraction);
-      document.removeEventListener('touchend', handleInteraction);
-      document.removeEventListener('mousedown', handleInteraction);
-      document.removeEventListener('click', handleInteraction);
-      window.removeEventListener('focus', resumeAudio);
+      document.removeEventListener('pointerdown', resumeAudio, { capture: true });
+      document.removeEventListener('touchstart', resumeAudio);
+      document.removeEventListener('click', resumeAudio);
     };
   }, [audioCtx]);
   // ------------------------------
@@ -795,12 +703,6 @@ const App = () => {
   return (
     <div className={`h-screen w-full ${darkMode ? 'bg-[#121212]' : 'bg-[#333]'} flex flex-col items-center justify-start md:justify-center p-2 md:p-4 overflow-y-auto transition-colors duration-300`}>
       <HelpModal isOpen={showModal} onClose={() => setShowModal(false)} />
-
-      {showAudioSuspendedBanner && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center py-3 px-4 font-bold text-sm md:text-base shadow-lg animate-pulse">
-          ⚠️ AUDIO SUSPENDED - TAP ANYWHERE TO WAKE
-        </div>
-      )}
 
       <div className={`w-full max-w-4xl shrink-0 ${mainBg} rounded-xl shadow-2xl border-4 ${panelBorder} flex flex-col relative transition-colors duration-300 mb-8 md:mb-0`}>
         <div className="absolute top-2 right-4 z-20 flex gap-3 items-center">
