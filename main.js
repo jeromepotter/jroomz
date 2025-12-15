@@ -642,7 +642,32 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleRun]); 
+  }, [toggleRun]);
+  // ------------------------------
+
+  // --- MOBILE AUDIO WAKE ---
+  // Resume audio context on any touch/click when suspended (e.g., returning from background)
+  useEffect(() => {
+    if (!audioCtx) return;
+
+    const handleInteraction = async () => {
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+        } catch (err) {
+          console.error('Failed to resume audio context:', err);
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener('mousedown', handleInteraction);
+
+    return () => {
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('mousedown', handleInteraction);
+    };
+  }, [audioCtx]);
   // ------------------------------
 
   const doTrigger = async () => {
