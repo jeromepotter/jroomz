@@ -34,6 +34,10 @@
           const frac = pos - idxA;
           return (this.buffer[idxA] * (1 - frac)) + (this.buffer[idxB] * frac);
       }
+      clear() {
+          this.buffer.fill(0);
+          this.head = 0;
+      }
   }
 
   class SimpleOnePole {
@@ -162,6 +166,9 @@
               } else if (type === 'SET_STEP') {
                   this.sequencer.currentStep = payload.step;
                   this.sequencer.clockPhase = 0;
+              } else if (type === 'CLEAR_DELAY') {
+                  this.delayL.clear();
+                  this.delayR.clear();
               }
           };
       }

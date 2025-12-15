@@ -399,6 +399,7 @@ const App = () => {
         workletNode.port.postMessage({ type: 'PARAM_UPDATE', payload: { id: key, value: fullParams[key] } });
       });
       workletNode.port.postMessage({ type: 'SEQ_UPDATE', payload: { steps: normalizedSteps } });
+      workletNode.port.postMessage({ type: 'CLEAR_DELAY' });
     }
   };
 
