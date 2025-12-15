@@ -331,6 +331,11 @@ const App = () => {
   const [params, setParams] = useState(initialParams);
   const [steps, setSteps] = useState(window.PRESETS[0].steps);
 
+  // Debug: log banner state changes
+  useEffect(() => {
+    console.log('[JROOMZ] Banner state changed to:', showAudioSuspendedBanner);
+  }, [showAudioSuspendedBanner]);
+
   // Merge with defaults when loading
   const applyPatch = (patch) => {
     const p = patch;
@@ -659,12 +664,20 @@ const App = () => {
   // --- AUDIO CONTEXT STATE MONITOR ---
   // Check audio context state and show banner if suspended
   useEffect(() => {
-    if (!audioCtx) return;
+    if (!audioCtx) {
+      console.log('[JROOMZ] State monitor - no audioCtx');
+      return;
+    }
+
+    console.log('[JROOMZ] State monitor - setting up, initial state:', audioCtx.state);
 
     const checkAudioState = () => {
+      console.log('[JROOMZ] Checking audio state:', audioCtx.state, 'visibilityState:', document.visibilityState);
       if (audioCtx.state === 'suspended') {
+        console.log('[JROOMZ] Audio is SUSPENDED - showing banner');
         setShowAudioSuspendedBanner(true);
       } else {
+        console.log('[JROOMZ] Audio is', audioCtx.state, '- hiding banner');
         setShowAudioSuspendedBanner(false);
       }
     };
@@ -677,6 +690,7 @@ const App = () => {
 
     // Check on visibility change
     const handleVisibilityChange = () => {
+      console.log('[JROOMZ] Visibility changed to:', document.visibilityState);
       if (document.visibilityState === 'visible') {
         checkAudioState();
       }
@@ -693,9 +707,15 @@ const App = () => {
   // --- AGGRESSIVE AUDIO WAKE ---
   // Resume audio context on ANY user interaction
   useEffect(() => {
-    if (!audioCtx) return;
+    if (!audioCtx) {
+      console.log('[JROOMZ] Interaction handler - no audioCtx');
+      return;
+    }
+
+    console.log('[JROOMZ] Interaction handler - setting up listeners');
 
     const resumeAudio = async () => {
+      console.log('[JROOMZ] resumeAudio called - current state:', audioCtx.state);
       if (audioCtx.state === 'suspended') {
         console.log('[JROOMZ] Attempting to resume audio context...');
         try {
@@ -705,19 +725,23 @@ const App = () => {
         } catch (err) {
           console.error('[JROOMZ] Failed to resume audio context:', err);
         }
+      } else {
+        console.log('[JROOMZ] Audio already in state:', audioCtx.state, '- no resume needed');
       }
     };
 
     // Try to resume on visibility change
     const handleVisibilityChange = async () => {
+      console.log('[JROOMZ] handleVisibilityChange - visibilityState:', document.visibilityState, 'audioCtx.state:', audioCtx.state);
       if (document.visibilityState === 'visible') {
-        console.log('[JROOMZ] Page became visible, checking audio state:', audioCtx.state);
+        console.log('[JROOMZ] Page became visible, attempting resume...');
         await resumeAudio();
       }
     };
 
     // Try to resume on ANY user interaction
     const handleInteraction = async (e) => {
+      console.log('[JROOMZ] User interaction detected:', e.type);
       await resumeAudio();
     };
 
@@ -729,6 +753,7 @@ const App = () => {
     window.addEventListener('focus', resumeAudio);
 
     return () => {
+      console.log('[JROOMZ] Cleaning up interaction listeners');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('touchend', handleInteraction);
