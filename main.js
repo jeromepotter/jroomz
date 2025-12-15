@@ -286,13 +286,41 @@ const PresetSelector = ({ currentPreset, onSelect, darkMode }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const currentIndex = window.PRESETS.findIndex(p => p.name === currentPreset);
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    const newIndex = currentIndex <= 0 ? window.PRESETS.length - 1 : currentIndex - 1;
+    onSelect(newIndex);
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    const newIndex = currentIndex >= window.PRESETS.length - 1 ? 0 : currentIndex + 1;
+    onSelect(newIndex);
+  };
+
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative flex items-center gap-0.5" ref={menuRef}>
+      <button
+        onClick={handlePrev}
+        title="Previous preset"
+        className={`w-5 h-5 flex items-center justify-center border text-xs font-bold transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white bg-gray-800' : 'border-gray-400 text-gray-600 hover:border-gray-600 hover:text-black bg-gray-200'}`}
+      >
+        ‹
+      </button>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`text-xs font-bold px-2 py-1 rounded border uppercase tracking-wider flex items-center gap-1 transition-colors ${darkMode ? 'text-gray-300 border-gray-600 hover:border-gray-400 bg-gray-800' : 'text-gray-600 border-gray-400 hover:border-gray-600 bg-gray-200'}`}
+        className={`text-xs font-bold px-2 py-1 border uppercase tracking-wider flex items-center gap-1 transition-colors max-w-[80px] sm:max-w-[120px] ${darkMode ? 'text-gray-300 border-gray-600 hover:border-gray-400 bg-gray-800' : 'text-gray-600 border-gray-400 hover:border-gray-600 bg-gray-200'}`}
       >
-        {currentPreset ? currentPreset : 'PRESETS'} <span className="text-[8px]">▼</span>
+        <span className="truncate">{currentPreset ? currentPreset : 'PRESETS'}</span> <span className="text-[8px] flex-shrink-0">▼</span>
+      </button>
+      <button
+        onClick={handleNext}
+        title="Next preset"
+        className={`w-5 h-5 flex items-center justify-center border text-xs font-bold transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white bg-gray-800' : 'border-gray-400 text-gray-600 hover:border-gray-600 hover:text-black bg-gray-200'}`}
+      >
+        ›
       </button>
       {isOpen && (
         <div className={`absolute top-full right-0 mt-1 w-48 max-h-[320px] overflow-y-auto preset-scroll border-2 shadow-xl z-50 rounded-sm ${darkMode ? 'bg-gray-900 border-gray-600 text-gray-300' : 'bg-white border-gray-800 text-gray-800'}`}>
@@ -735,7 +763,7 @@ const App = () => {
           <button onClick={() => setDarkMode(!darkMode)} className={`text-xs font-bold ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}>{darkMode ? 'LIGHT' : 'DARK'}</button>
           <button onClick={() => setShowModal(true)} className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${darkMode ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' : 'border-gray-600 text-gray-600 hover:border-black hover:text-black'}`}>?</button>
         </div>
-        <div className={`absolute top-2 left-4 z-20 font-poppins font-black tracking-tight text-lg opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
+        <div className={`absolute top-2 left-2 md:left-4 z-20 font-poppins font-black tracking-tight text-xs md:text-lg opacity-80 ${darkMode ? 'text-gray-500' : 'text-gray-700'}`}>JROOMZ</div>
 
         <div className="flex flex-col md:px-8 py-10 w-full">
           <div className={`${seqBg} border-2 ${seqBorder} rounded-lg p-2 shadow-inner mb-4 transition-colors duration-300`}>
