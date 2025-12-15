@@ -544,7 +544,9 @@ const App = () => {
   };
 
   const toggleRun = async () => {
-    if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
     const newVal = params.run ? 0 : 1;
     updateParam('run', newVal);
   };
@@ -642,7 +644,32 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleRun]); 
+  }, [toggleRun]);
+  // ------------------------------
+
+  // --- AUDIO WAKE (from no-b-250 working implementation) ---
+  // Simple, proven approach: resume on any touch/click
+  useEffect(() => {
+    if (!audioCtx) return;
+
+    const resumeAudio = () => {
+      // If context is suspended or interrupted (iOS), resume it
+      if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+        audioCtx.resume();
+      }
+    };
+
+    // Use pointerdown with capture to catch events early
+    document.addEventListener('pointerdown', resumeAudio, { capture: true });
+    document.addEventListener('touchstart', resumeAudio, { passive: true });
+    document.addEventListener('click', resumeAudio);
+
+    return () => {
+      document.removeEventListener('pointerdown', resumeAudio, { capture: true });
+      document.removeEventListener('touchstart', resumeAudio);
+      document.removeEventListener('click', resumeAudio);
+    };
+  }, [audioCtx]);
   // ------------------------------
 
   const doTrigger = async () => {
