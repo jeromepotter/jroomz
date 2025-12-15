@@ -77,7 +77,7 @@
     {
       name: "CLOSED-CASE",
       params: { tempo: 135, vco1Level: 0.0, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.75, resonance: 0.2, vcaDecay: 0.04, vcaAttack: 0.001, delayWet: 0.0, masterHP: 0.7, masterLP: 1.0, volume: 0.7 },
-      steps: [{ p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }].map(s => ({ pitch: s.p, velocity: s.v }))
+      steps: [{ p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.8 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
       name: "RIM-SHOT-CITY",
@@ -159,9 +159,9 @@
       steps: [{ p: 0.2, v: 0.8 }, { p: 0.0, v: 0.0 }, { p: 0.3, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.25, v: 0.7 }, { p: 0.0, v: 0.0 }, { p: 0.1, v: 0.0 }, { p: 0.0, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
-      name: "KLAXON-ALARM",
-      params: { tempo: 160, vco1Freq: 0.5, vco2Freq: 0.52, vco1Wave: 1, vco2Wave: 1, cutoff: 1.0, vcaDecay: 0.5, delayWet: 0.0, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.005 },
-      steps: [{ p: 0.8, v: 0.9 }, { p: 0.8, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.8, v: 0.9 }, { p: 0.8, v: 0.9 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
+      name: "SILK-DREAM",
+      params: { tempo: 65, vco1Freq: 0.25, vco2Freq: 0.252, vco1Wave: 1, vco2Wave: 1, vco1Level: 0.6, vco2Level: 0.6, cutoff: 0.35, resonance: 0.35, vcfEgAmt: 0.2, vcaAttack: 0.08, vcaDecay: 0.9, reverbMix: 0.85, reverbDecay: 0.95, delayWet: 0.5, delayFdbk: 0.6, delayRate: 0.75, masterHP: 0.0, masterLP: 0.8, volume: 0.75 },
+      steps: [{ p: 0.5, v: 0.7 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.6, v: 0.6 }, { p: 0.0, v: 0.0 }, { p: 0.0, v: 0.0 }, { p: 0.4, v: 0.5 }, { p: 0.0, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
       name: "DATA-STREAM",
@@ -203,7 +203,7 @@
     },
     {
       name: "GLITCH-STORM",
-      params: { tempo: 180, vco1Freq: 0.7, noiseLevel: 0.4, cutoff: 0.7, vcfDecay: 0.03, vcaDecay: 0.03, dataBenderMix: 0.8, dataBenderCrush: 0.9, dataBenderDrop: 0.7, dataBenderDrive: 0.8, delayWet: 0.3, delayFdbk: 0.5, masterHP: 0.2, masterLP: 1.0, vcaAttack: 0.001 },
+      params: { tempo: 180, vco1Freq: 0.7, noiseLevel: 0.4, cutoff: 0.7, vcfDecay: 0.03, vcaDecay: 0.03, dataBenderMix: 0.8, dataBenderCrush: 0.5, dataBenderDrop: 0.7, dataBenderDrive: 0.8, delayWet: 0.3, delayFdbk: 0.5, masterHP: 0.2, masterLP: 1.0, vcaAttack: 0.001 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: Math.random() > 0.2 ? Math.random() : 0.0 }))
     },
     {
@@ -213,12 +213,12 @@
     },
     {
       name: "CHAOS-THEORY",
-      params: { tempo: 155, vco1Freq: Math.random() * 0.6 + 0.2, vco2Freq: Math.random() * 0.6 + 0.2, vco1Wave: Math.random() > 0.5 ? 1 : 0, hardSync: Math.random() > 0.5 ? 1 : 0, fmAmount: Math.random() * 0.8, noiseLevel: Math.random() * 0.6, cutoff: Math.random(), resonance: Math.random() * 0.7, vcaDecay: Math.random() * 0.5, delayWet: Math.random() * 0.5, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.003 },
+      params: { tempo: 155, vco1Freq: Math.random() * 0.6 + 0.2, vco2Freq: Math.random() * 0.6 + 0.2, vco1Wave: Math.random() > 0.5 ? 1 : 0, hardSync: Math.random() > 0.5 ? 1 : 0, fmAmount: Math.random() * 0.8, noiseLevel: Math.random() * 0.6, cutoff: 0.6, resonance: Math.random() * 0.7, vcaDecay: Math.random() * 0.5, delayWet: Math.random() * 0.5, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.003 },
       steps: Array(8).fill(null).map(() => ({ pitch: Math.random(), velocity: Math.random() }))
     },
     {
-      name: "BIT-CRUSHER",
-      params: { tempo: 130, vco1Freq: 0.35, vco1Wave: 0, vco1Level: 0.9, cutoff: 0.6, resonance: 0.3, vcaDecay: 0.15, dataBenderMix: 1.0, dataBenderCrush: 0.95, dataBenderDrop: 0.3, dataBenderDrive: 0.7, dataBenderRate: 0.2, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.003 },
+      name: "FRACTAL-GRIT",
+      params: { tempo: 130, vco1Freq: 0.35, vco1Wave: 0, vco1Level: 0.9, cutoff: 0.6, resonance: 0.3, vcaDecay: 0.15, dataBenderMix: 1.0, dataBenderCrush: 0.95, dataBenderDrop: 0.3, dataBenderDrive: 0.7, dataBenderRate: 0.2, masterHP: 0.0, masterLP: 1.0, vcaAttack: 0.003, volume: 0.6 },
       steps: [{ p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.6, v: 0.7 }, { p: 0.4, v: 0.5 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.7, v: 0.8 }, { p: 0.3, v: 0.6 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
@@ -233,8 +233,8 @@
     },
     {
       name: "NOISE-FLOOR",
-      params: { tempo: 140, vco1Level: 0.2, vco2Level: 0.0, noiseLevel: 1.0, cutoff: 0.65, resonance: 0.6, vcfEgAmt: 0.7, vcfDecay: 0.12, vcaDecay: 0.12, noiseVcfMod: 0.6, delayWet: 0.2, masterHP: 0.3, masterLP: 1.0, vcaAttack: 0.002 },
-      steps: [{ p: 0.5, v: 0.8 }, { p: 0.5, v: 0.5 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.9 }, { p: 0.5, v: 0.0 }, { p: 0.5, v: 0.7 }, { p: 0.5, v: 0.6 }, { p: 0.5, v: 0.0 }].map(s => ({ pitch: s.p, velocity: s.v }))
+      params: { tempo: 85, vco1Freq: 0.2, vco1Wave: 1, vco1Level: 0.5, noiseLevel: 0.7, fmAmount: 0.4, cutoff: 0.4, resonance: 0.65, vcfEgAmt: 0.5, vcfDecay: 0.25, vcaDecay: 0.35, noiseVcfMod: 0.7, delayWet: 0.4, delayFdbk: 0.7, delayRate: 0.5, reverbMix: 0.3, masterHP: 0.1, masterLP: 0.85, vcaAttack: 0.01 },
+      steps: [{ p: 0.3, v: 0.7 }, { p: 0.0, v: 0.0 }, { p: 0.6, v: 0.8 }, { p: 0.0, v: 0.0 }, { p: 0.4, v: 0.6 }, { p: 0.7, v: 0.5 }, { p: 0.0, v: 0.0 }, { p: 0.5, v: 0.7 }].map(s => ({ pitch: s.p, velocity: s.v }))
     },
     {
       name: "COSMIC-DUST",
