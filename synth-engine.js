@@ -77,6 +77,14 @@
     vcf: Math.pow(0.5, 3), 
     vca: Math.pow(0.0, 3) 
 };
+this.analogSlop = {
+    vco1: 0,
+    vco2: 0,
+    cutoff: 0,
+    decay: 0,
+    vca: 0
+};
+this.thermalDrift = 0;
           this.vco1 = { phase: 0 };
           this.vco2 = { phase: 0 };
           this.vcoEg = { val: 0, phase: 0 };
@@ -212,10 +220,12 @@ const x = vco.phase - 0.5;
 }
 
       triggerEnvelopes() {
-          this.vcoEg.phase = 1;
-          this.vcfEg.phase = 1;
-          this.vcaEg.phase = 1;
-      }
+         this.analogSlop.vco1 = (Math.random() - 0.5) * 0.005;  // Tiny pitch intonation diff
+    this.analogSlop.vco2 = (Math.random() - 0.5) * 0.005;
+    this.analogSlop.cutoff = (Math.random() - 0.5) * 0.04; // Cutoff varies ~4% per hit
+    this.analogSlop.decay = (Math.random() - 0.5) * 0.05;  // Envelopes are never identical
+    this.analogSlop.vca = (Math.random() - 0.5) * 0.02;    // Slight volume nuance
+}
 
       processEnvelopes() {
           const attackTime = Math.max(0.001, this.params.vcaAttack);
@@ -235,10 +245,10 @@ const x = vco.phase - 0.5;
                   env.val *= Math.exp(-1.0 / (time * this.fs));
               }
           };
-
-          runEnv(this.vcoEg, this.envCurves.vco);
-          runEnv(this.vcfEg, this.envCurves.vcf);
-          runEnv(this.vcaEg, this.envCurves.vca);
+let decayMod = this.analogSlop.decay;
+        runEnv(this.vcoEg, Math.max(0, this.envCurves.vco + decayMod));
+runEnv(this.vcfEg, Math.max(0, this.envCurves.vcf + decayMod));
+runEnv(this.vcaEg, Math.max(0, this.envCurves.vca + decayMod));
       }
 
       runMoogFilter(input, cutoffFreq, res) {
@@ -249,7 +259,7 @@ const x = vco.phase - 0.5;
           fc = Math.min(Math.max(fc, 0), 0.98);
           const r = res * 4.5;
           const normalizedCut = cutoffFreq / (this.fs * 0.48);
-          const drive = 1.0;
+          const drive = 1.2 + (Math.abs(input) * 0.5);
           const x = (input * drive * (1 + r * 0.5)) - r * Math.tanh(this.filter.s4);
           const f = fc;
 
@@ -447,9 +457,13 @@ const x = vco.phase - 0.5;
 
               this.velSmoother.set(this.sequencer.lastTrigVel);
               const vel = this.velSmoother.process(0.005);
+              this.thermalDrift += (Math.random() - 0.5) * 0.00005; 
+// Constrain it so it doesn't drift out of tune completely
+if (this.thermalDrift > 0.002) this.thermalDrift = 0.002;
+if (this.thermalDrift < -0.002) this.thermalDrift = -0.002;
 
-              const vco1Base = 20 * Math.pow(1000, this.params.vco1Freq);
-              const vco2Base = 20 * Math.pow(1000, this.params.vco2Freq);
+const vco1Base = 20 * Math.pow(1000, this.params.vco1Freq + this.analogSlop.vco1 + this.thermalDrift);
+const vco2Base = 20 * Math.pow(1000, this.params.vco2Freq + this.analogSlop.vco2 + this.thermalDrift);
               const egAmt1 = (this.params.vco1EgAmt - 0.5) * 2.0;
               const vco1EgFactor = Math.pow(2, egAmt1 * 4 * this.vcoEg.val * vel);
               const egAmt2 = (this.params.vco2EgAmt - 0.5) * 2.0;
@@ -507,14 +521,13 @@ const osc2Out = vco2Result.val;
 
               let cutEgMod = (this.params.vcfEgAmt - 0.5) * 2.0 * (this.vcfEg.val * vel);
               let noiseMod = this.params.noiseVcfMod * noiseSamp;
-              let moddedCutoffParam = this.params.cutoff + (cutEgMod * 0.5) + (noiseMod * 0.2);
-              moddedCutoffParam = Math.max(0.001, Math.min(0.999, moddedCutoffParam));
+let moddedCutoffParam = this.params.cutoff + this.analogSlop.cutoff + (cutEgMod * 0.5) + (noiseMod * 0.2);
+moddedCutoffParam = Math.max(0.001, Math.min(0.999, moddedCutoffParam));
 
               const finalCutoffFreq = 20 * Math.pow(20000/20, moddedCutoffParam);
 
               let filtered = this.runMoogFilter(mix, finalCutoffFreq, resonanceParam);
-              const postVca = Math.tanh(filtered * this.vcaEg.val * vel);
-
+const postVca = Math.tanh(filtered * (this.vcaEg.val + this.analogSlop.vca) * vel);
               const [bentL, bentR] = this.processDataBender(postVca, postVca);
               const [delL, delR] = this.processDelay(bentL, bentR);
               const [revL, revR] = this.processReverb(delL, delR);
