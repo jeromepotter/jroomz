@@ -708,11 +708,9 @@ const App = () => {
 
   const doAdvance = async () => {
     if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); }
-    if (!params.run) {
-      const nextStep = (currentStep + 1) % 8;
-      setCurrentStep(nextStep);
-      if (workletNode) workletNode.port.postMessage({ type: 'SET_STEP', payload: { step: nextStep } });
-    }
+    const nextStep = (currentStep + 1) % 8;
+    setCurrentStep(nextStep);
+    if (workletNode) workletNode.port.postMessage({ type: 'SET_STEP', payload: { step: nextStep } });
   };
 
   if (!isStarted) {
